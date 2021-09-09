@@ -1208,4 +1208,6 @@ int sde_connector_esd_status(struct drm_connector *connector);
 const char *sde_conn_get_topology_name(struct drm_connector *conn,
 		struct msm_display_topology topology);
 
+void sde_connector_fod_post_kickoff(struct drm_connector *connector);
+
 #endif /* _SDE_CONNECTOR_H_ */
