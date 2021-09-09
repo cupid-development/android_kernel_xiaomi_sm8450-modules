@@ -147,6 +147,7 @@ struct dsi_backlight_config {
 	u32 bl_scale_sv;
 	u32 bl_dcs_subtype;
 	bool bl_inverted_dbv;
+	u32 real_bl_level;
 	/* digital dimming backlight LUT */
 	struct drm_msm_dimming_bl_lut *dimming_bl_lut;
 	u32 dimming_min_bl;
