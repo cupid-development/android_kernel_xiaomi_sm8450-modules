@@ -208,6 +208,7 @@ struct dsi_display {
 
 	const char *name;
 	const char *display_type;
+	enum dsi_display_selection_type display_selection_type;
 	struct list_head list;
 	bool is_cont_splash_enabled;
 	bool is_hibernate_splash_enabled;
