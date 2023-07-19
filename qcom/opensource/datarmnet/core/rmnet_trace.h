@@ -13,7 +13,7 @@
 #define TRACE_INCLUDE_PATH ../../../../../../../src/datarmnet/core
 #endif /* endif LINUX_VERSION_CODE < KERNEL_VERSION(5,5,0) */
 #else
-#define TRACE_INCLUDE_PATH ../../../../vendor/qcom/opensource/datarmnet/core
+#define TRACE_INCLUDE_PATH ../../../../sm8450-modules/qcom/opensource/datarmnet/core
 #endif
 #define TRACE_INCLUDE_FILE rmnet_trace
 
