@@ -1537,7 +1537,6 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev,
 	is_pre_dev_version = get_hw_id_value();
 	is_pre_dev_platform = get_hw_version_platform();
 
-	printk("<%s><%d>: E.\n", __func__, __LINE__);
 	match = of_match_node(waipio_asoc_machine_of_match, dev->of_node);
 	if (!match) {
 		dev_err(dev, "%s: No DT match found for sound card\n",
@@ -1682,7 +1681,6 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev,
 		card->late_probe = msm_snd_card_late_probe;
 	}
 
-	printk("<%s><%d>: X.\n", __func__, __LINE__);
 	return card;
 }
 
@@ -2305,7 +2303,6 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	struct timespec64 curTime;
 #endif
 
-	printk("<%s><%d>: E.\n", __func__, __LINE__);
 	if (!pdev->dev.of_node) {
 		dev_err(&pdev->dev, "%s: No platform supplied from device tree\n", __func__);
 		return -EINVAL;
@@ -2372,7 +2369,6 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 
 	ret = msm_populate_dai_link_component_of_node(card);
 	if (ret) {
-		printk("<%s><%d>: X.\n", __func__, __LINE__);
 		ret = -EPROBE_DEFER;
 		goto err;
 	}
@@ -2452,7 +2448,6 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	return 0;
 err:
 	devm_kfree(&pdev->dev, pdata);
-	printk("<%s><%d>: X, failed.\n", __func__, __LINE__);
 #if IS_ENABLED(CONFIG_MIEV)
 	if(ret != -EPROBE_DEFER) {
 		dev_dbg(&pdev->dev,"<%s><%d>: X, failed.non-DEFER skip sound card registration.\n", __func__, __LINE__);
