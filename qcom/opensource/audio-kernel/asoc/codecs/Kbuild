@@ -240,6 +240,10 @@ ifneq (,$(filter $(TARGET_PRODUCT), ziyi))
 	CDEFINES += -DCONFIG_TARGET_PRODUCT_ZIYI
 endif
 
+ifneq (,$(filter $(TARGET_PRODUCT), yudi))
+        CDEFINES += -DCONFIG_TARGET_PRODUCT_YUDI
+endif
+
 KBUILD_CPPFLAGS += $(CDEFINES)
 
 # Currently, for versions of gcc which support it, the kernel Makefile
@@ -263,7 +267,7 @@ ifeq ($(KERNEL_BUILD), 1)
 	obj-y	+= lpass-cdc/
 	obj-y	+= wsa883x/
 	obj-y	+= rouleur/
-	obj-y	+= cs35l41/
+	obj-y	+= cs35l43/
 	obj-y	+= aw882xx/
 endif
 

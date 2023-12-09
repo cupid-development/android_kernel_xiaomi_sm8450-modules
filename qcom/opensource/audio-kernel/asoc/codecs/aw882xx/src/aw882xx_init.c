@@ -841,6 +841,7 @@ static int aw_pid_2032_dev_init(struct aw882xx *aw882xx, int index)
 
 	ret = aw882xx_device_probe(aw_pa);
 
+	aw_pa->index = aw_pa->channel;
 	aw882xx->aw_pa = aw_pa;
 	return ret;
 }

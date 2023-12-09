@@ -1798,6 +1798,45 @@ static int wcd_mbhc_set_keycode(struct wcd_mbhc *mbhc)
 	return result;
 }
 
+static int wcd_mbhc_non_usb_c_event_changed(struct notifier_block *nb,
+					unsigned long evt, void *ptr)
+{
+	struct wcd_mbhc *mbhc = container_of(nb, struct wcd_mbhc, fsa_nb);
+	struct ucsi_glink_constat_info *tempptr = (struct ucsi_glink_constat_info *)ptr;
+	enum typec_accessory acc;
+
+	if (mbhc == NULL || tempptr == NULL)
+		return -EINVAL;
+	acc = tempptr->acc;
+
+	switch (acc) {
+	case TYPEC_ACCESSORY_AUDIO:
+		dev_err(mbhc->component->dev, "%s: report Type-C usb headphone\n", __func__);
+		if (mbhc->usbc_mode == acc)
+			break; /* filter notifications received before */
+		wcd_mbhc_jack_report(mbhc, &mbhc->usb_3_5_jack,
+					WCD_MBHC_JACK_USB_3_5_MASK,
+					WCD_MBHC_JACK_USB_3_5_MASK);
+		mbhc->usbc_mode = acc;
+		break;
+	case TYPEC_ACCESSORY_NONE:
+		if (mbhc->usbc_mode == acc)
+			break; /* filter notifications received before */
+		if (mbhc->usbc_mode == TYPEC_ACCESSORY_AUDIO) {
+			mbhc->usbc_mode = acc - 1;
+			break;
+		}
+		wcd_mbhc_jack_report(mbhc, &mbhc->usb_3_5_jack, 0,
+					WCD_MBHC_JACK_USB_3_5_MASK);
+		mbhc->usbc_mode = acc;
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 #if IS_ENABLED(CONFIG_QCOM_FSA4480_I2C)
 #ifdef CONFIG_AUDIO_UART_DEBUG
 static int wcd_mbhc_init_gpio(struct wcd_mbhc *mbhc,
@@ -1835,7 +1874,7 @@ static int wcd_mbhc_init_gpio(struct wcd_mbhc *mbhc,
 static int wcd_mbhc_usbc_ana_event_handler(struct notifier_block *nb,
 					   unsigned long mode, void *ptr)
 {
-#ifdef CONFIG_TARGET_PRODUCT_ZIYI
+#if defined(CONFIG_TARGET_PRODUCT_ZIYI) || defined(CONFIG_TARGET_PRODUCT_YUDI)
 	u8 det_status = 0;
 #endif
 	struct wcd_mbhc *mbhc = container_of(nb, struct wcd_mbhc, fsa_nb);
@@ -1857,7 +1896,7 @@ static int wcd_mbhc_usbc_ana_event_handler(struct notifier_block *nb,
 		/* insertion detected, enable L_DET_EN */
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_L_DET_EN, 0);
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_L_DET_EN, 1);
-#ifdef CONFIG_TARGET_PRODUCT_ZIYI
+#if defined(CONFIG_TARGET_PRODUCT_ZIYI) || defined(CONFIG_TARGET_PRODUCT_YUDI)
 		WCD_MBHC_REG_READ(WCD_MBHC_L_DET_EN,det_status);
 		pr_debug("%s: det_status = %x\n",__func__,det_status);
 #endif
@@ -1866,7 +1905,7 @@ static int wcd_mbhc_usbc_ana_event_handler(struct notifier_block *nb,
 		msm_cdc_pinctrl_select_sleep_state(config->uart_audio_switch_gpio_p);
 		dev_dbg(mbhc->component->dev, "enable uart\n");
 #endif
-#ifdef CONFIG_TARGET_PRODUCT_ZIYI
+#if defined(CONFIG_TARGET_PRODUCT_ZIYI) || defined(CONFIG_TARGET_PRODUCT_YUDI)
 		if (mode == TYPEC_ACCESSORY_NONE && mbhc->current_plug == MBHC_PLUG_TYPE_NONE) {
 			mbhc->hs_detect_work_stop = true;
 			/* Disable HW FSM */
@@ -1948,6 +1987,15 @@ int wcd_mbhc_start(struct wcd_mbhc *mbhc, struct wcd_mbhc_config *mbhc_cfg)
 			dev_err(card->dev, "%s: fsa4480 i2c node not found\n",
 				__func__);
 			rc = -EINVAL;
+			goto err;
+		}
+	} else {
+		mbhc->fsa_nb.notifier_call = wcd_mbhc_non_usb_c_event_changed;
+		mbhc->fsa_nb.priority = 0;
+		rc = register_ucsi_glink_notifier(&mbhc->fsa_nb);
+		if (rc) {
+			dev_err(card->dev, "%s: power supply registration failed\n",
+					__func__);
 			goto err;
 		}
 	}
@@ -2149,6 +2197,14 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_component *component,
 		if (ret) {
 			pr_err("%s: Failed to set code for btn-0\n",
 				__func__);
+			return ret;
+		}
+
+		ret = snd_soc_card_jack_new(component->card,
+					    "USB_3_5 Jack", WCD_MBHC_JACK_USB_3_5_MASK,
+					    &mbhc->usb_3_5_jack, NULL, 0);
+		if (ret) {
+			pr_err("%s: Failed to create new jack USB_3_5 Jack\n", __func__);
 			return ret;
 		}
 
