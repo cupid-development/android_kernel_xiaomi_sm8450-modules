@@ -414,7 +414,7 @@ int msm_common_snd_hw_params(struct snd_pcm_substream *substream,
 
 				intf_clk_cfg.clk_id = ret;
 				intf_clk_cfg.clk_freq_in_hz = rate * slot_width * slots;
-				intf_clk_cfg.clk_attri = CLOCK_ATTRIBUTE_INVERT_COUPLE_NO;
+			        intf_clk_cfg.clk_attri = CLOCK_ATTRIBUTE_INVERT_COUPLE_NO;
 				intf_clk_cfg.clk_root = 0;
 
 				if (pdata->is_audio_hw_vote_required[index]  &&
@@ -428,6 +428,7 @@ int msm_common_snd_hw_params(struct snd_pcm_substream *substream,
 				}
 				pr_debug("%s: clk_id :%d clk freq %d\n", __func__,
 					intf_clk_cfg.clk_id, intf_clk_cfg.clk_freq_in_hz);
+                                pr_debug("clk_attri %d", intf_clk_cfg.clk_attri);
 				ret = audio_prm_set_lpass_clk_cfg(&intf_clk_cfg, 1);
 				if (ret < 0) {
 					pr_err("%s: prm lpass tdm clk cfg set failed ret %d\n",
