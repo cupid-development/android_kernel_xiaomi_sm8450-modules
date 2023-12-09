@@ -27,10 +27,11 @@ ifeq ($(KERNEL_BUILD), 0)
 		include $(AUDIO_ROOT)/config/waipioauto.conf
 		INCS    +=  -include $(AUDIO_ROOT)/config/waipioautoconf.h
 	endif
-	ifeq ($(CONFIG_ARCH_PARROT), y)
-		include $(AUDIO_ROOT)/config/waipioauto.conf
-		INCS    +=  -include $(AUDIO_ROOT)/config/waipioautoconf.h
-	endif
+
+ 	ifeq ($(CONFIG_ARCH_PARROT), y)
+ 		include $(AUDIO_ROOT)/config/waipioauto.conf
+ 		INCS    +=  -include $(AUDIO_ROOT)/config/waipioautoconf.h
+ 	endif
 
 endif
 
@@ -58,18 +59,15 @@ UAPI_INC :=	-I$(AUDIO_ROOT)/include/$(UAPI_DIR)
 COMMON_DIR :=	include
 COMMON_INC :=	-I$(AUDIO_ROOT)/$(COMMON_DIR)
 
-############ WCD938X ############
+############ CS35L43 ############
 
-# for WCD938X Codec
-ifdef CONFIG_SND_SOC_WCD938X
-	WCD938X_OBJS += wcd938x.o
-	WCD938X_OBJS += wcd938x-regmap.o
-	WCD938X_OBJS += wcd938x-tables.o
-	WCD938X_OBJS += wcd938x-mbhc.o
-endif
-
-ifdef CONFIG_SND_SOC_WCD938X_SLAVE
-	WCD938X_SLAVE_OBJS += wcd938x-slave.o
+# for CS35L43 Codec
+ifdef CONFIG_SND_SOC_CS35L43
+	CS35L43_OBJS += cs35l43.o
+	CS35L43_OBJS += cs35l43-i2c.o
+	CS35L43_OBJS += cs35l43-tables.o
+	CS35L43_OBJS += wm_adsp.o
+	#CS35L43_OBJS += send_data_to_xlog.o
 endif
 
 LINUX_INC +=	-Iinclude/linux
@@ -79,6 +77,22 @@ INCS +=		$(COMMON_INC) \
 
 EXTRA_CFLAGS += $(INCS)
 
+ifeq ($(TARGET_PRODUCT), $(filter $(TARGET_PRODUCT), taro))
+       CDEFINES += -DCONFIG_AUDIO_SMARTPA_STEREO
+endif
+
+ifneq (,$(filter $(TARGET_PRODUCT), ingres))
+	CDEFINES += -DCONFIG_SWITCH_PROTECTION
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_INGRES
+endif
+
+ifneq (,$(filter $(TARGET_PRODUCT), liuqin))
+	CDEFINES += -DCONFIG_MMHARDWARE_DETECTION
+endif
+
+ifneq (,$(filter $(TARGET_PRODUCT), yudi))
+	CDEFINES += -DCONFIG_MMHARDWARE_DETECTION
+endif
 
 CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DANI_LITTLE_BIT_ENDIAN \
@@ -90,20 +104,20 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-Werror\
 		-D__linux__
 
-ifneq (,$(filter $(TARGET_PRODUCT), ingres))
-	CDEFINES += -DCONFIG_TARGET_PRODUCT_INGRES
+ifneq (,$(filter $(TARGET_PRODUCT), zeus))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_ZEUS
 endif
 
-ifneq (,$(filter $(TARGET_PRODUCT), ziyi))
-     CDEFINES += -DCONFIG_TARGET_PRODUCT_ZIYI
+ifneq (,$(filter $(TARGET_PRODUCT), cupid))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_CUPID
 endif
 
-ifneq (,$(filter $(TARGET_PRODUCT), yudi))
-        CDEFINES += -DCONFIG_TARGET_PRODUCT_YUDI
+ifneq (,$(filter $(TARGET_PRODUCT), thor))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_THOR
 endif
 
-ifneq (,$(filter $(TARGET_PRODUCT), yudi))
-	CDEFINES += -DCONFIG_MMHARDWARE_DETECTION
+ifneq (,$(filter $(TARGET_PRODUCT), diting))
+        CDEFINES += -DCONFIG_TARGET_PRODUCT_DITING
 endif
 
 KBUILD_CPPFLAGS += $(CDEFINES)
@@ -121,10 +135,17 @@ ifeq ($(call cc-option-yn, -Wheader-guard),y)
 EXTRA_CFLAGS += -Wheader-guard
 endif
 
+ifeq ($(KERNEL_BUILD), 0)
+KBUILD_EXTRA_SYMBOLS +=$(OUT)/obj/vendor/qcom/opensource/audio-kernel/ipc/Module.symvers
+KBUILD_EXTRA_SYMBOLS +=$(OUT)/obj/vendor/qcom/opensource/audio-kernel/dsp/Module.symvers
+KBUILD_EXTRA_SYMBOLS +=$(OUT)/obj/vendor/qcom/opensource/audio-kernel/asoc/Module.symvers
+KBUILD_EXTRA_SYMBOLS +=$(OUT)/obj/vendor/qcom/opensource/audio-kernel/asoc/codecs/Module.symvers
+KBUILD_EXTRA_SYMBOLS +=$(OUT)/obj/vendor/qcom/opensource/audio-kernel/soc/Module.symvers
+endif
 
 # Module information used by KBuild framework
-obj-$(CONFIG_SND_SOC_WCD938X) += wcd938x_dlkm.o
-wcd938x_dlkm-y := $(WCD938X_OBJS)
+obj-$(CONFIG_SND_SOC_CS35L43) += cs35l43_dlkm.o
+cs35l43_dlkm-y := $(CS35L43_OBJS)
 
-obj-$(CONFIG_SND_SOC_WCD938X_SLAVE) += wcd938x_slave_dlkm.o
-wcd938x_slave_dlkm-y := $(WCD938X_SLAVE_OBJS)
+# inject some build related information
+DEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"

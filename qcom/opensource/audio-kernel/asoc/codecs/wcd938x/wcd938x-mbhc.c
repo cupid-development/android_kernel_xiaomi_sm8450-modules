@@ -1106,7 +1106,7 @@ int wcd938x_mbhc_init(struct wcd938x_mbhc **mbhc,
 
 	(*mbhc) = wcd938x_mbhc;
 
-#ifndef CONFIG_TARGET_PRODUCT_ZIYI
+#if !defined(CONFIG_TARGET_PRODUCT_ZIYI) && !defined(CONFIG_TARGET_PRODUCT_YUDI)
 	snd_soc_add_component_controls(component, impedance_detect_controls,
 				   ARRAY_SIZE(impedance_detect_controls));
 	snd_soc_add_component_controls(component, hph_type_detect_controls,
