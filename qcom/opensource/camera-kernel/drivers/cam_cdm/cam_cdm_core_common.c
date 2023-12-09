@@ -779,37 +779,34 @@ int cam_cdm_process_cmd(void *hw_priv,
 		break;
 	}
 	case CAM_CDM_HW_INTF_CMD_HANG_DETECT: {
-		struct cam_cdm_handle_info *handle_info;
+		uint32_t *handle = cmd_args;
 		int idx;
 		struct cam_cdm_client *client;
 
 		if (sizeof(uint32_t) != arg_size) {
 			CAM_ERR(CAM_CDM,
-				"Invalid CDM cmd %d size=%x",
-				cmd, arg_size);
+				"Invalid CDM cmd %d size=%x for handle=%x",
+				cmd, arg_size, *handle);
 				return -EINVAL;
 		}
 
-		handle_info = (struct cam_cdm_handle_info *)cmd_args;
-
-		idx = CAM_CDM_GET_CLIENT_IDX(handle_info->handle);
+		idx = CAM_CDM_GET_CLIENT_IDX(*handle);
 		client = core->clients[idx];
 		if (!client) {
 			CAM_ERR(CAM_CDM,
 				"Client not present for handle %d",
-				handle_info->handle);
+				*handle);
 			break;
 		}
 
-		if (handle_info->handle != client->handle) {
+		if (*handle != client->handle) {
 			CAM_ERR(CAM_CDM,
 				"handle mismatch, client handle %d index %d received handle %d",
-				client->handle, idx, handle_info->handle);
+				client->handle, idx, *handle);
 			break;
 		}
 
-		rc = cam_hw_cdm_hang_detect(cdm_hw, handle_info->handle,
-			handle_info->module_id);
+		rc = cam_hw_cdm_hang_detect(cdm_hw, *handle);
 		break;
 	}
 	case CAM_CDM_HW_INTF_DUMP_DBG_REGS:
