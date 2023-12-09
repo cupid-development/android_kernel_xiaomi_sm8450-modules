@@ -917,7 +917,7 @@ report:
 	WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_ADC_MODE, 0);
 	WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_ADC_EN, 0);
 
-#ifdef CONFIG_TARGET_PRODUCT_ZIYI
+#if defined(CONFIG_TARGET_PRODUCT_ZIYI) || defined(CONFIG_TARGET_PRODUCT_YUDI)
 	if (mbhc->hs_detect_work_stop) {
 		pr_debug("%s: stop requested: %d\n", __func__,
 				mbhc->hs_detect_work_stop);

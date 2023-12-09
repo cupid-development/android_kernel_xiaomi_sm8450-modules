@@ -78,7 +78,7 @@ static int qos_vote_status;
 static struct dev_pm_qos_request latency_pm_qos_req; /* pm_qos request */
 static unsigned int qos_client_active_cnt;
 /* set audio task affinity to core 1 & 2 */
-static const unsigned int audio_core_list[] = {1, 2};
+static const unsigned int audio_core_list[] = {0, 1, 2, 3, 4, 5};
 static cpumask_t audio_cpu_map = CPU_MASK_NONE;
 static struct dev_pm_qos_request *msm_audio_req = NULL;
 static bool kregister_pm_qos_latency_controls = false;
@@ -410,7 +410,7 @@ int msm_common_snd_hw_params(struct snd_pcm_substream *substream,
 
 				intf_clk_cfg.clk_id = ret;
 				intf_clk_cfg.clk_freq_in_hz = rate * slot_width * slots;
-				intf_clk_cfg.clk_attri = CLOCK_ATTRIBUTE_INVERT_COUPLE_NO;
+			        intf_clk_cfg.clk_attri = CLOCK_ATTRIBUTE_INVERT_COUPLE_NO;
 				intf_clk_cfg.clk_root = 0;
 
 				if (pdata->is_audio_hw_vote_required[index]  &&
@@ -424,6 +424,7 @@ int msm_common_snd_hw_params(struct snd_pcm_substream *substream,
 				}
 				pr_debug("%s: clk_id :%d clk freq %d\n", __func__,
 					intf_clk_cfg.clk_id, intf_clk_cfg.clk_freq_in_hz);
+                                pr_debug("clk_attri %d", intf_clk_cfg.clk_attri);
 				ret = audio_prm_set_lpass_clk_cfg(&intf_clk_cfg, 1);
 				if (ret < 0) {
 					pr_err("%s: prm lpass tdm clk cfg set failed ret %d\n",
