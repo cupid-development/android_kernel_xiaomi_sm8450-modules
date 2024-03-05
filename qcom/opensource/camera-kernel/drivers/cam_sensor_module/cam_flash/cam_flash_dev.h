@@ -49,6 +49,8 @@
 #define CAM_FLASH_PACKET_OPCODE_SET_OPS              1
 #define CAM_FLASH_PACKET_OPCODE_NON_REALTIME_SET_OPS 2
 
+#define CONFIG_CAMERA_I2CFLASH 1
+
 struct cam_flash_ctrl;
 
 enum cam_flash_switch_trigger_ops {
@@ -193,6 +195,7 @@ struct cam_flash_func_tbl {
  * @io_master_info      : Information about the communication master
  * @i2c_data            : I2C register settings
  * @last_flush_req      : last request to flush
+ * @trigger_source      : Indicate the trigger source
  */
 struct cam_flash_ctrl {
 	char device_name[CAM_CTX_DEV_NAME_MAX_LENGTH];
@@ -221,6 +224,9 @@ struct cam_flash_ctrl {
 	struct camera_io_master             io_master_info;
 	struct i2c_data_settings            i2c_data;
 	uint32_t                            last_flush_req;
+#if IS_ENABLED(CONFIG_ISPV3)
+	enum cam_req_mgr_trigger_source     trigger_source;
+#endif
 };
 
 int cam_flash_pmic_pkt_parser(struct cam_flash_ctrl *fctrl, void *arg);
@@ -238,7 +244,7 @@ int cam_flash_pmic_flush_request(struct cam_flash_ctrl *fctrl,
 	enum cam_flash_flush_type, uint64_t req_id);
 void cam_flash_shutdown(struct cam_flash_ctrl *fctrl);
 int cam_flash_release_dev(struct cam_flash_ctrl *fctrl);
-
+void update_i2c_flash_brightness(struct i2c_settings_list *i2c_list);
 /**
  * @brief : API to register FLASH hw to platform framework.
  * @return struct platform_device pointer on on success, or ERR_PTR() on error.

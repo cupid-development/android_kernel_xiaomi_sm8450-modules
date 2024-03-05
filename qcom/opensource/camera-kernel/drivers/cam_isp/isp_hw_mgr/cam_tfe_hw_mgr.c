@@ -29,7 +29,7 @@
 #include "cam_trace.h"
 #include "cam_compat.h"
 
-#define CAM_TFE_HW_CONFIG_TIMEOUT 60
+#define CAM_TFE_HW_CONFIG_TIMEOUT 150
 #define CAM_TFE_HW_CONFIG_WAIT_MAX_TRY  3
 
 #define TZ_SVC_SMMU_PROGRAM 0x15
@@ -987,7 +987,6 @@ static int cam_tfe_hw_mgr_acquire_res_tfe_out_pixel(
 					tfe_out_res->hw_res[j]->res_id;
 				comp_grp->num_res++;
 			}
-
 			CAM_DBG(CAM_ISP, "resource type :0x%x res id:0x%x comp grp id:%d",
 				tfe_out_res->hw_res[j]->res_type,
 				tfe_out_res->hw_res[j]->res_id,

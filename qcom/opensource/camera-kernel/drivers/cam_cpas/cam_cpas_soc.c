@@ -759,27 +759,36 @@ static int cam_cpas_parse_sys_cache_uids(
 			goto end;
 		}
 
-		do {
-			soc_private->llcc_info[i].slic_desc =
-				llcc_slice_getd(soc_private->llcc_info[i].uid);
+		soc_private->llcc_info[i].slic_desc =
+			llcc_slice_getd(soc_private->llcc_info[i].uid);
 
-			if (IS_ERR_OR_NULL(soc_private->llcc_info[i].slic_desc)) {
+		if (IS_ERR_OR_NULL(soc_private->llcc_info[i].slic_desc)) {
+			CAM_ERR(CAM_CPAS,
+				"Failed to get slice desc for uid %u due to LLCC delayed, camera need to wait for LLCC ready",
+				soc_private->llcc_info[i].uid);
+			do
+			{
+				msleep(1000);
+				soc_private->llcc_info[i].slic_desc =
+						llcc_slice_getd(soc_private->llcc_info[i].uid);
+				if (!IS_ERR_OR_NULL(soc_private->llcc_info[i].slic_desc)) {
+					CAM_INFO(CAM_CPAS,
+							"Success to get slic_desc %lld when LLCC delayed with retry %d", PTR_ERR(soc_private->llcc_info[i].slic_desc), m);
+						break;
+				} else {
+					CAM_ERR(CAM_CPAS,
+							"Failed to get slic_desc %lld, retry %d", PTR_ERR(soc_private->llcc_info[i].slic_desc), m);
+				}
+				m++;
+
+			} while(m < LLCC_RETRY);
+
+			if (m >= LLCC_RETRY) {
 				CAM_ERR(CAM_CPAS,
-					"Failed to get slice desc for uid %u with retry %d",
-					soc_private->llcc_info[i].uid, m);
-			} else {
-				CAM_INFO(CAM_CPAS,
-					"Succeeded to get slice desc %lld with retry %d",
-					PTR_ERR(soc_private->llcc_info[i].slic_desc), m);
-				break;
+						"Failed to get slic_desc with Max retry");
+				rc = -EINVAL;
+				goto end;
 			}
-			msleep(1000);
-			m++;
-		} while (m <= LLCC_RETRY);
-
-		if (m >= LLCC_RETRY) {
-			rc = -EINVAL;
-			goto end;
 		}
 
 		scid = llcc_get_slice_id(soc_private->llcc_info[i].slic_desc);

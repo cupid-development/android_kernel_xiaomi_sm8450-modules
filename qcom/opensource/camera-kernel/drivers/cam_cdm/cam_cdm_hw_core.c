@@ -1900,8 +1900,8 @@ int cam_hw_cdm_hang_detect(
 		for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++) {
 			if (atomic_read(&cdm_core->bl_fifo[i].work_record)) {
 				CAM_WARN(CAM_CDM,
-					"fifo: %d Workqueue got delayed for %s%u, work_record :%u",
-					i, soc_info->label_name, soc_info->index,
+					"workqueue got delayed for %s%u, work_record :%u",
+					soc_info->label_name, soc_info->index,
 					atomic_read(&cdm_core->bl_fifo[i].work_record));
 				rc = 0;
 				break;

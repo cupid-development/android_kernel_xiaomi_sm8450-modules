@@ -277,10 +277,6 @@ static int cam_ife_mgr_handle_reg_dump(struct cam_ife_hw_mgr_ctx *ctx,
 			"Reg dump values might be from more than one request");
 
 	for (i = 0; i < num_reg_dump_buf; i++) {
-                rc = cam_packet_util_validate_cmd_desc(&reg_dump_buf_desc[i]);
-                if (rc)
-                        return rc;
-
 		CAM_DBG(CAM_ISP, "Reg dump cmd meta data: %u req_type: %u",
 			reg_dump_buf_desc[i].meta_data, meta_type);
 		if (reg_dump_buf_desc[i].meta_data == meta_type) {
@@ -6054,7 +6050,7 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 			(ctx->ctx_config & CAM_IFE_CTX_CFG_SW_SYNC_ON)) {
 			rem_jiffies = cam_common_wait_for_completion_timeout(
 				&ctx->config_done_complete,
-				msecs_to_jiffies(60));
+				msecs_to_jiffies(120));  //xiaomi modify timeout time from 60->120
 			if (rem_jiffies == 0) {
 				CAM_ERR(CAM_ISP,
 					"config done completion timeout for req_id=%llu ctx_index %d",
@@ -6083,6 +6079,9 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 	} else {
 		CAM_ERR(CAM_ISP, "No commands to config");
 	}
+
+	if (ctx->flags.is_sfe_fs || ctx->flags.is_sfe_shdr)
+		ctx->is_frame_setting_update = true;
 
 	CAM_DBG(CAM_ISP, "Exit: Config Done: %llu",  cfg->request_id);
 	return rc;
@@ -11101,19 +11100,29 @@ static int cam_ife_mgr_prepare_hw_update(void *hw_mgr_priv,
 	if (prepare->num_out_map_entries &&
 		prepare->num_in_map_entries &&
 		ctx->flags.is_offline) {
+
+		uint32_t offlineIdx;
+		for (offlineIdx = 0; offlineIdx < ctx->num_base; offlineIdx++) {
+			if(ctx->ctx_type != CAM_IFE_CTX_TYPE_SFE &&
+				ctx->base[offlineIdx].hw_type == CAM_ISP_HW_TYPE_IFE_CSID)
+				break;
+			else if(ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE &&
+				ctx->base[offlineIdx].hw_type == CAM_ISP_HW_TYPE_CSID)
+				break;
+		}
 		if (ctx->ctx_type != CAM_IFE_CTX_TYPE_SFE)
 			rc = cam_isp_add_go_cmd(prepare, &ctx->res_list_ife_in_rd,
-				ctx->base[i].idx, &kmd_buf);
+				ctx->base[offlineIdx].idx, &kmd_buf);
 		else
 			rc = cam_isp_add_csid_offline_cmd(prepare,
 				&ctx->res_list_ife_csid,
-				ctx->base[i].idx, &kmd_buf);
+				ctx->base[offlineIdx].idx, &kmd_buf);
 		if (rc)
 			CAM_ERR(CAM_ISP,
 				"Add %s GO_CMD faled i: %d, idx: %d, rc: %d",
 				(ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE ?
 				"CSID" : "IFE RD"),
-				i, ctx->base[i].idx, rc);
+				i, ctx->base[offlineIdx].idx, rc);
 	}
 
 end:
@@ -11649,6 +11658,9 @@ static int cam_ife_mgr_prog_default_settings(
 				"RUP/AUP update failed for scratch buffers in ctx: %u",
 				ctx->ctx_index);
 	}
+
+	if (ctx->flags.is_sfe_fs || ctx->flags.is_sfe_shdr)
+		ctx->is_frame_setting_update = true;
 
 end:
 	return rc;
@@ -13290,7 +13302,19 @@ static int cam_ife_hw_mgr_handle_sfe_event(
 	case CAM_ISP_HW_EVENT_DONE:
 		rc = cam_ife_hw_mgr_handle_hw_buf_done(ctx, event_info);
 		break;
+	case CAM_ISP_HW_EVENT_SOF:
+		if (ctx->flags.is_sfe_fs || ctx->flags.is_sfe_shdr)
+			ctx->is_frame_setting_update = false;
+		break;
 
+	case CAM_ISP_HW_EVENT_EOF:
+		if ((!ctx->is_frame_setting_update)
+			&& (ctx->flags.is_sfe_fs || ctx->flags.is_sfe_shdr)) {
+			CAM_DBG(CAM_ISP, "Program the default setting");
+			cam_ife_mgr_prog_default_settings(false, ctx);
+		}
+
+		break;
 	default:
 		CAM_WARN(CAM_ISP, "Event: %u not handled for SFE", evt_id);
 		rc = -EINVAL;

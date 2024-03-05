@@ -12,6 +12,43 @@
 #include "cam_common_util.h"
 #include "cam_packet_util.h"
 
+#ifdef CONFIG_CAMERA_I2CFLASH
+#define I2C_FLASH_ADDR 0xc6
+extern struct cam_flash_ctrl *fctrl_flash_aux;
+extern struct cam_flash_ctrl *fctrl_flash;
+
+int cam_flash_i2c_apply_aux_setting(struct i2c_settings_list *i2c_list)
+{
+	int rc = 0;
+	int i = 0;
+
+	if (fctrl_flash_aux != NULL) {
+		for (i = 0; i < i2c_list->i2c_settings.size; i++) {
+			CAM_DBG(CAM_FLASH, "i2c_flash update register[%d]Addr[0x%x]=0x%x",
+				i,
+				i2c_list->i2c_settings.reg_setting[i].reg_addr,
+				i2c_list->i2c_settings.reg_setting[i].reg_data);
+		}
+		update_i2c_flash_brightness(i2c_list);
+		rc = cam_sensor_util_i2c_apply_setting
+			(&(fctrl_flash_aux->io_master_info), i2c_list);
+		if (rc) {
+			CAM_ERR(CAM_FLASH, "flash_aux Failed to apply settings: %d", rc);
+		}
+	}
+
+	if (fctrl_flash != NULL) {
+		rc = cam_sensor_util_i2c_apply_setting
+			(&(fctrl_flash->io_master_info), i2c_list);
+		if (rc) {
+			CAM_ERR(CAM_FLASH, "flash Failed to apply settings: %d", rc);
+		}
+	}
+
+	return rc;
+}
+#endif
+
 int cam_flash_led_prepare(struct led_trigger *trigger, int options,
 	int *max_current, bool is_wled)
 {
@@ -182,6 +219,33 @@ int cam_flash_i2c_power_ops(struct cam_flash_ctrl *fctrl,
 			cam_sensor_util_power_down(power_info, soc_info);
 			goto free_pwr_settings;
 		}
+
+#ifdef CONFIG_CAMERA_I2CFLASH
+		if (fctrl_flash_aux != NULL) {
+			fctrl_flash_aux->io_master_info.client->addr = I2C_FLASH_ADDR;
+			rc = camera_io_init(&(fctrl_flash_aux->io_master_info));
+			if (rc) {
+				CAM_ERR(CAM_FLASH, "flash_aux cci_init failed: rc: %d", rc);
+				camera_io_release(&(fctrl->io_master_info));
+				cam_sensor_util_power_down(power_info, soc_info);
+				goto free_pwr_settings;
+			}
+			CAM_INFO(CAM_FLASH, "flash_aux camera_io_init: rc: %d", rc);
+		}
+
+		if (fctrl_flash != NULL) {
+			fctrl_flash->io_master_info.client->addr = I2C_FLASH_ADDR;
+			rc = camera_io_init(&(fctrl_flash->io_master_info));
+			if (rc) {
+				CAM_ERR(CAM_FLASH, "flash cci_init failed: rc: %d", rc);
+				camera_io_release(&(fctrl->io_master_info));
+				cam_sensor_util_power_down(power_info, soc_info);
+				goto free_pwr_settings;
+			}
+			CAM_INFO(CAM_FLASH, "flash camera_io_init: rc: %d", rc);
+		}
+#endif
+
 		fctrl->is_regulator_enabled = true;
 	} else if ((!regulator_enable) &&
 		(fctrl->is_regulator_enabled == true)) {
@@ -192,6 +256,19 @@ int cam_flash_i2c_power_ops(struct cam_flash_ctrl *fctrl,
 			return rc;
 		}
 		camera_io_release(&(fctrl->io_master_info));
+
+#ifdef CONFIG_CAMERA_I2CFLASH
+		if (fctrl_flash_aux != NULL) {
+			camera_io_release(&(fctrl_flash_aux->io_master_info));
+			CAM_INFO(CAM_FLASH, "flash_aux camera_io_release");
+		}
+
+		if (fctrl_flash != NULL) {
+			camera_io_release(&(fctrl_flash->io_master_info));
+			CAM_INFO(CAM_FLASH, "flash camera_io_release");
+		}
+#endif
+
 		fctrl->is_regulator_enabled = false;
 		goto free_pwr_settings;
 	}
@@ -690,6 +767,10 @@ int cam_flash_i2c_apply_setting(struct cam_flash_ctrl *fctrl,
 					(&(fctrl->io_master_info), i2c_list);
 				}
 
+#ifdef CONFIG_CAMERA_I2CFLASH
+				cam_flash_i2c_apply_aux_setting(i2c_list);
+#endif
+
 				if (rc) {
 					CAM_ERR(CAM_FLASH,
 					"Failed to apply init settings: %d",
@@ -710,6 +791,11 @@ int cam_flash_i2c_apply_setting(struct cam_flash_ctrl *fctrl,
 					"Failed to apply NRT settings: %d", rc);
 					return rc;
 				}
+
+#ifdef CONFIG_CAMERA_I2CFLASH
+				cam_flash_i2c_apply_aux_setting(i2c_list);
+#endif
+
 			}
 		}
 	} else {
@@ -727,6 +813,11 @@ int cam_flash_i2c_apply_setting(struct cam_flash_ctrl *fctrl,
 					"Failed to apply settings: %d", rc);
 					return rc;
 				}
+
+#ifdef CONFIG_CAMERA_I2CFLASH
+				cam_flash_i2c_apply_aux_setting(i2c_list);
+#endif
+
 			}
 		}
 	}
@@ -1023,10 +1114,6 @@ int cam_flash_i2c_pkt_parser(struct cam_flash_ctrl *fctrl, void *arg)
 		/* INIT packet*/
 		/* Loop through multiple command buffers */
 		for (i = 1; i < csl_packet->num_cmd_buf; i++) {
-			rc = cam_packet_util_validate_cmd_desc(&cmd_desc[i]);
-			if (rc)
-				return rc;
-
 			total_cmd_buf_in_bytes = cmd_desc[i].length;
 			processed_cmd_buf_in_bytes = 0;
 			if (!total_cmd_buf_in_bytes)
@@ -1193,6 +1280,7 @@ int cam_flash_i2c_pkt_parser(struct cam_flash_ctrl *fctrl, void *arg)
 		i2c_reg_settings =
 			&fctrl->i2c_data.per_frame[frm_offset];
 		if (i2c_reg_settings->is_settings_valid == true) {
+			CAM_DBG(CAM_FLASH, "settings already valid");
 			i2c_reg_settings->request_id = 0;
 			i2c_reg_settings->is_settings_valid = false;
 			goto update_req_mgr;
@@ -1800,10 +1888,27 @@ int cam_flash_pmic_pkt_parser(struct cam_flash_ctrl *fctrl, void *arg)
 
 int cam_flash_publish_dev_info(struct cam_req_mgr_device_info *info)
 {
+#if IS_ENABLED(CONFIG_ISPV3)
+	struct cam_flash_ctrl *fctrl;
+
+	if (!info) {
+		CAM_ERR(CAM_FLASH, "Invalid Args");
+		return -EINVAL;
+	}
+
+	fctrl = (struct cam_flash_ctrl *)
+		cam_get_device_priv(info->dev_hdl);
+#endif
+
 	info->dev_id = CAM_REQ_MGR_DEVICE_FLASH;
 	strlcpy(info->name, CAM_FLASH_NAME, sizeof(info->name));
 	info->p_delay = CAM_FLASH_PIPELINE_DELAY;
 	info->trigger = CAM_TRIGGER_POINT_SOF;
+#if IS_ENABLED(CONFIG_ISPV3)
+	info->trigger_source = fctrl->trigger_source;
+	info->latest_frame_id = -1;
+#endif
+
 	return 0;
 }
 

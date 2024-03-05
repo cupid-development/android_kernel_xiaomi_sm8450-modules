@@ -189,7 +189,7 @@ struct cam_cdm_bl_info {
 };
 
 /**
- * struct cam_cdm_handle_info
+ * struct cam_cdm_bl_info
  *
  * @handle    : handle for the bl fifo client
  * @module_id : module information of the hw.

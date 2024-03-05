@@ -336,13 +336,17 @@ int cam_mem_get_cpu_buf(int32_t buf_handle, uintptr_t *vaddr_ptr, size_t *len)
 		return -EINVAL;
 	}
 
-	if (!buf_handle || !vaddr_ptr || !len)
+	if (!buf_handle || !vaddr_ptr || !len) {
+		CAM_ERR(CAM_MEM, "failed. invalid buf_handle");
 		return -EINVAL;
+	}
 
 	idx = CAM_MEM_MGR_GET_HDL_IDX(buf_handle);
 
-	if (idx >= CAM_MEM_BUFQ_MAX || idx <= 0)
+	if (idx >= CAM_MEM_BUFQ_MAX || idx <= 0) {
+		CAM_ERR(CAM_MEM, "invalid idx %d", idx);
 		return -EINVAL;
+	}
 
 	if (!tbl.bufq[idx].active) {
 		CAM_ERR(CAM_MEM, "Buffer at idx=%d is already unmapped,",
