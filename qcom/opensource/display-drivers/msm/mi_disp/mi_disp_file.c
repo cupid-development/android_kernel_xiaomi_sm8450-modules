@@ -106,19 +106,20 @@ ssize_t mi_disp_read(struct file *filp, char __user *buffer,
 	if (ret)
 		return ret;
 
+	DISP_INFO("hello from mi_disp_read, count is %d", count);
 	for (;;) {
-		struct disp_pending_event *e = NULL;
+		struct disp_pending_event *pending_event = NULL;
 
 		spin_lock_irq(&df->client_spinlock);
 		if (!list_empty(&client->event_list)) {
-			e = list_first_entry(&client->event_list,
+			pending_event = list_first_entry(&client->event_list,
 					struct disp_pending_event, link);
-			client->event_space += e->event.base.length;
-			list_del(&e->link);
+			client->event_space += pending_event->event.base.length;
+			list_del(&pending_event->link);
 		}
 		spin_unlock_irq(&df->client_spinlock);
 
-		if (e == NULL) {
+		if (pending_event == NULL) {
 			if (ret)
 				break;
 
@@ -135,32 +136,47 @@ ssize_t mi_disp_read(struct file *filp, char __user *buffer,
 			if (ret)
 				return ret;
 		} else {
-			unsigned length = e->event.base.length;
+			unsigned length = pending_event->event.base.length;
+			unsigned copy_length = length - pending_event->offset;
+			bool partial_read = false;
 
-			if (length > count - ret) {
-put_back_event:
-				spin_lock_irq(&df->client_spinlock);
-				client->event_space -= length;
-				list_add(&e->link, &client->event_list);
-				spin_unlock_irq(&df->client_spinlock);
-				wake_up_interruptible(&client->event_wait);
-				break;
+			DISP_INFO("length is: %d, offset is: %d", length, pending_event->offset);
+
+			if (copy_length > count - ret) {
+				copy_length = count - ret;
+
+				partial_read = true;
 			}
 
-			DISP_DEBUG("%s display event type: %s\n",
-				get_disp_id_name(e->event.base.disp_id),
-				get_disp_event_type_name(e->event.base.type));
-			DISP_DEBUG("%s display event length: %d\n",
-				get_disp_id_name(e->event.base.disp_id), length);
+			DISP_INFO("%s display event type: %s\n",
+				get_disp_id_name(pending_event->event.base.disp_id),
+				get_disp_event_type_name(pending_event->event.base.type));
+			DISP_INFO("%s display event length: %d\n",
+				get_disp_id_name(pending_event->event.base.disp_id), length);
+			DISP_INFO("%s display event copy length: %d\n",
+				get_disp_id_name(pending_event->event.base.disp_id), copy_length);
 
-			if (copy_to_user(buffer + ret, &e->event, length)) {
+			if (copy_to_user(buffer + ret, ((__u8*)&pending_event->event) +
+					pending_event->offset, copy_length)) {
 				if (ret == 0)
 					ret = -EFAULT;
 				goto put_back_event;
 			}
 
-			ret += length;
-			kfree(e);
+			ret += copy_length;
+			if (partial_read) {
+				pending_event->offset += count;
+put_back_event:
+				DISP_INFO("putting event back!");
+				spin_lock_irq(&df->client_spinlock);
+				client->event_space -= length;
+				list_add(&pending_event->link, &client->event_list);
+				spin_unlock_irq(&df->client_spinlock);
+				wake_up_interruptible(&client->event_wait);
+				break;
+			} else {
+				kfree(pending_event);
+			}
 		}
 	}
 	mutex_unlock(&client->event_lock);
