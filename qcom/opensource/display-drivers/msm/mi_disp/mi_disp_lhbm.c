@@ -521,10 +521,7 @@ exit:
 
 int mi_disp_lhbm_fod_set_finger_event(int disp_id, u32 fod_status, bool from_touch)
 {
-	/* FodEngine will control lhbm via mi_disp_ioctl_set_local_hbm.
-	 * This function will not work.
-	 */
-	return 0;
+	return mi_disp_set_local_hbm(disp_id, fod_status);
 
 #if 0
 	struct disp_lhbm_fod *lhbm_fod = mi_get_disp_lhbm_fod(disp_id);
