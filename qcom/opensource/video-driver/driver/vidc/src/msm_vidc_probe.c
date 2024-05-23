@@ -199,6 +199,7 @@ static int msm_vidc_register_video_device(struct msm_vidc_core *core,
 	return 0;
 }
 
+#ifdef CONFIG_MSM_MMRM
 static int msm_vidc_check_mmrm_support(struct msm_vidc_core *core)
 {
 	int rc = 0;
@@ -220,6 +221,12 @@ exit:
 	d_vpr_h("%s: %d\n", __func__, core->capabilities[MMRM].value);
 	return rc;
 }
+#else
+static int msm_vidc_check_mmrm_support(struct msm_vidc_core *core)
+{
+	return 0;
+}
+#endif
 
 static int msm_vidc_deinitialize_core(struct msm_vidc_core *core)
 {
@@ -592,8 +599,52 @@ static int msm_vidc_pm_resume(struct device *dev)
 	return 0;
 }
 
+#if defined(CONFIG_HIBERNATION) && defined(CONFIG_MSM_VIDC_NEO)
+static int msm_vidc_pm_freeze(struct device *dev)
+{
+	int rc = 0;
+	struct msm_vidc_core *core;
+
+	/*
+	 * Bail out if
+	 * - driver possibly not probed yet
+	 * - not the main device. We don't support power management on
+	 *   subdevices (e.g. context banks)
+	 */
+	if (!dev || !dev->driver ||
+		!of_device_is_compatible(dev->of_node, "qcom,msm-vidc"))
+		return 0;
+
+	core = dev_get_drvdata(dev);
+	if (!core) {
+		d_vpr_e("%s: invalid core\n", __func__);
+		return -EINVAL;
+	}
+
+	d_vpr_h("%s\n", __func__);
+
+	rc = msm_vidc_schedule_core_deinit(core, true);
+
+	if (rc == -ENOTSUPP)
+		rc = 0;
+	else if (rc)
+		d_vpr_e("Failed to freeze: %d\n", rc);
+
+	return rc;
+}
+
+static int msm_vidc_pm_restore(struct device *dev) {
+	d_vpr_h("%s\n", __func__);
+	return 0;
+}
+#endif
+
 static const struct dev_pm_ops msm_vidc_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(msm_vidc_pm_suspend, msm_vidc_pm_resume)
+#if defined(CONFIG_HIBERNATION) && defined(CONFIG_MSM_VIDC_NEO)
+	.freeze = msm_vidc_pm_freeze,
+	.restore = msm_vidc_pm_restore
+#endif
 };
 
 struct platform_driver msm_vidc_driver = {
