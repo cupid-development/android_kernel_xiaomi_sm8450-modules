@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (C) 2014-2021 The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
@@ -2667,6 +2667,7 @@ static int sde_plane_sspp_atomic_check(struct drm_plane *plane,
 	int ret = 0;
 	struct sde_plane *psde;
 	struct sde_plane_state *pstate;
+	struct sde_crtc_state *cstate;
 	const struct msm_format *msm_fmt;
 	const struct sde_format *fmt;
 	struct sde_rect src, dst;
@@ -2695,6 +2696,7 @@ static int sde_plane_sspp_atomic_check(struct drm_plane *plane,
 	if (!sde_plane_enabled(state))
 		goto modeset_update;
 
+	cstate = to_sde_crtc_state(state->crtc->state);
 	fb = state->fb;
 	width = fb ? state->fb->width : 0x0;
 	height = fb ? state->fb->height : 0x0;
@@ -2719,7 +2721,9 @@ static int sde_plane_sspp_atomic_check(struct drm_plane *plane,
 	if (ret)
 		return ret;
 
-	if (SDE_FORMAT_IS_FSC(fmt) && (state->src_w % 3 != 0)) {
+	if (SDE_FORMAT_IS_FSC(fmt) &&
+			sde_crtc_is_connector_fsc(cstate) &&
+			(state->src_w % 3 != 0)) {
 		SDE_ERROR_PLANE(psde,
 				"fsc width must be multiple of 3, width %d\n",
 				width);
@@ -3797,7 +3801,8 @@ static void _sde_plane_setup_capabilities_blob(struct sde_plane *psde,
 
 	index = (master_plane_id == 0) ? 0 : 1;
 	if (catalog->has_demura &&
-	    catalog->demura_supported[psde->pipe][index] != ~0x0)
+		psde->pipe < SSPP_MAX &&
+		catalog->demura_supported[psde->pipe][index] != ~0x0)
 		sde_kms_info_add_keyint(info, "demura_block", index);
 
 	if (psde->features & BIT(SDE_SSPP_SEC_UI_ALLOWED))
