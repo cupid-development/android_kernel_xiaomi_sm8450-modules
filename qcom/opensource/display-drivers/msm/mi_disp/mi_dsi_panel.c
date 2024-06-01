@@ -1067,6 +1067,8 @@ int mi_dsi_panel_set_doze_brightness(struct dsi_panel *panel,
 		return -EINVAL;
 	}
 
+	DISP_ERROR("mi_dsi_panel_set_doze_brightness, doze_brightness: %d, doze_brightness: %d aod_to_normal_status: %d !\n", doze_brightness, mi_cfg->doze_brightness, panel->mi_cfg.aod_to_normal_status);
+
 	if (is_hbm_fod_on(panel)) {
 		mi_cfg->doze_brightness = doze_brightness;
 		DISP_INFO("Skip! [%s] set doze brightness %d due to FOD_HBM_ON\n",
