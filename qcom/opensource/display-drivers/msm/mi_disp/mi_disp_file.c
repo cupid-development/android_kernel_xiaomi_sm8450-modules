@@ -165,7 +165,7 @@ ssize_t mi_disp_read(struct file *filp, char __user *buffer,
 
 			ret += copy_length;
 			if (partial_read) {
-				e->offset += count;
+				e->offset += copy_length;
 put_back_event:
 				DISP_INFO("putting event back!");
 				spin_lock_irq(&df->client_spinlock);
