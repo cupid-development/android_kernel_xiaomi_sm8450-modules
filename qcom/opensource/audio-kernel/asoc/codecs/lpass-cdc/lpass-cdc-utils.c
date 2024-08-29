@@ -2,7 +2,6 @@
 /* Copyright (c) 2018, 2020, The Linux Foundation. All rights reserved.
  */
 
-#define DEBUG
 #include <linux/kernel.h>
 #include <linux/regmap.h>
 #include "lpass-cdc.h"

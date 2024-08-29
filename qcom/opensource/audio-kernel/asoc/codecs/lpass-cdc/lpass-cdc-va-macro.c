@@ -2,7 +2,6 @@
 /* Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
  */
 
-#define DEBUG
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/clk.h>
