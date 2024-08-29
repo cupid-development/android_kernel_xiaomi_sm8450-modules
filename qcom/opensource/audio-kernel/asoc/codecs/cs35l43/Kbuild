@@ -104,7 +104,7 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-Werror\
 		-D__linux__
 
-ifneq (,$(filter $(TARGET_PRODUCT), dagda zeus))
+ifneq (,$(filter $(TARGET_PRODUCT), zeus))
 	CDEFINES += -DCONFIG_TARGET_PRODUCT_ZEUS
 endif
 
@@ -112,7 +112,7 @@ ifneq (,$(filter $(TARGET_PRODUCT), cupid))
 	CDEFINES += -DCONFIG_TARGET_PRODUCT_CUPID
 endif
 
-ifneq (,$(filter $(TARGET_PRODUCT), taranis thor))
+ifneq (,$(filter $(TARGET_PRODUCT), thor))
 	CDEFINES += -DCONFIG_TARGET_PRODUCT_THOR
 endif
 
