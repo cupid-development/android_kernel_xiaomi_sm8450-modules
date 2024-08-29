@@ -98,14 +98,6 @@ ifneq (,$(filter $(TARGET_PRODUCT), ziyi))
      CDEFINES += -DCONFIG_TARGET_PRODUCT_ZIYI
 endif
 
-ifneq (,$(filter $(TARGET_PRODUCT), yudi))
-        CDEFINES += -DCONFIG_TARGET_PRODUCT_YUDI
-endif
-
-ifneq (,$(filter $(TARGET_PRODUCT), yudi))
-	CDEFINES += -DCONFIG_MMHARDWARE_DETECTION
-endif
-
 KBUILD_CPPFLAGS += $(CDEFINES)
 
 # Currently, for versions of gcc which support it, the kernel Makefile
