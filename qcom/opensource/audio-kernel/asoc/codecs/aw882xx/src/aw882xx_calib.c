@@ -17,7 +17,6 @@
 #include <asm/uaccess.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
-#include <linux/firmware.h>
 #include <linux/fs.h>
 #include <linux/miscdevice.h>
 #include <linux/device.h>
@@ -53,8 +52,17 @@ static DEFINE_MUTEX(g_cali_lock);
 
 #ifdef AW_CALI_STORE_EXAMPLE
  /*write cali to persist file example*/
-#define AWINIC_CALI_FILE "aw_cali.bin"
+#define AWINIC_CALI_FILE  "/mnt/vendor/persist/factory/audio/aw_cali.bin"
 #define AW_INT_DEC_DIGIT 10
+
+static void aw_fs_read(struct file *file, char *buf, size_t count, loff_t *pos)
+{
+#ifdef AW_KERNEL_VER_OVER_5_4_0
+	kernel_read(file, buf, count, pos);
+#else
+	vfs_read(file, buf, count, pos);
+#endif
+}
 
 static int aw_cali_write_cali_re_to_file(int32_t cali_re, int channel)
 {
@@ -65,15 +73,18 @@ static int aw_cali_write_cali_re_to_file(int32_t cali_re, int channel)
 	 return 0;
 }
 
-static int aw_cali_get_read_cali_re(struct aw_device *aw_dev, int32_t *cali_re,
-				    int channel)
+static int aw_cali_get_read_cali_re(int32_t *cali_re, int channel)
 {
-	const u8 *buf = NULL;
-	const struct firmware *fw = NULL;
+	struct file *fp = NULL;
+	/*struct inode *node;*/
+	int f_size;
+	char *buf = NULL;
 	int32_t int_cali_re = 0;
 	loff_t pos = 0;
+	mm_segment_t fs;
 
-	if (request_firmware(&fw, AWINIC_CALI_FILE, aw_dev->dev)) {
+	fp = filp_open(AWINIC_CALI_FILE, O_RDONLY, 0);
+	if (IS_ERR(fp)) {
 		pr_err("%s:channel:%d open %s failed!\n",
 			__func__, channel, AWINIC_CALI_FILE);
 		return -EINVAL;
@@ -81,24 +92,36 @@ static int aw_cali_get_read_cali_re(struct aw_device *aw_dev, int32_t *cali_re,
 
 	pos = AW_INT_DEC_DIGIT * channel;
 
-	if (fw->size < pos + AW_INT_DEC_DIGIT) {
-		pr_err("%s: invalid firmware size: %d, channel: %d, pos: %d",
-		       __func__, fw->size, channel, pos);
-		release_firmware(fw);
+	/*node = fp->f_dentry->d_inode;*/
+	/*f_size = node->i_size;*/
+	f_size = AW_INT_DEC_DIGIT;
+
+	buf = kzalloc(f_size + 1, GFP_ATOMIC);
+	if (!buf) {
+		pr_err("%s: channel:%d malloc mem %d failed!\n",
+			 __func__, channel, f_size);
+		filp_close(fp, NULL);
 		return -EINVAL;
 	}
 
-	buf = &fw->data[pos];
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+
+	aw_fs_read(fp, buf, f_size, &pos);
+
+	set_fs(fs);
 
 	if (sscanf(buf, "%d", &int_cali_re) == 1)
 		*cali_re = int_cali_re;
 	else
 		*cali_re = AW_ERRO_CALI_VALUE;
 
-	pr_info("%s: channel:%d buf:%.*s int_cali_re: %d\n", __func__, channel,
-		AW_INT_DEC_DIGIT, buf, int_cali_re);
+	pr_info("%s: channel:%d buf:%s int_cali_re: %d\n",
+		__func__, channel, buf, int_cali_re);
 
-	release_firmware(fw);
+	kfree(buf);
+	buf = NULL;
+	filp_close(fp, NULL);
 
 	return  0;
 }
@@ -118,8 +141,7 @@ int aw_cali_write_re_to_nvram(int32_t cali_re, int32_t channel)
 #endif
 }
 
-int aw882xx_cali_read_re_from_nvram(struct aw_device *aw_dev, int32_t *cali_re,
-				    int32_t channel)
+int aw882xx_cali_read_re_from_nvram(int32_t *cali_re, int32_t channel)
 {
 	/*custom add, if success return value is 0 , else -1*/
 #ifdef AW_CALI_STORE_EXAMPLE
@@ -127,7 +149,7 @@ int aw882xx_cali_read_re_from_nvram(struct aw_device *aw_dev, int32_t *cali_re,
 		pr_err("%s: unsupported channel [%d] \n", __func__, channel);
 		return -EINVAL;
 	}
-	return aw_cali_get_read_cali_re(aw_dev, cali_re, channel);
+	return aw_cali_get_read_cali_re(cali_re, channel);
 #else
 	return 0;
 #endif
