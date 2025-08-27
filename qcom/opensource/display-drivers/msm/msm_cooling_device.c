@@ -11,7 +11,9 @@
 static int sde_cdev_get_max_brightness(struct thermal_cooling_device *cdev,
 					unsigned long *state)
 {
-	*state = 200;
+	struct sde_cdev *disp_cdev = (struct sde_cdev *)cdev->devdata;
+
+	*state = disp_cdev->bd->props.max_brightness / disp_cdev->cdev_sf;
 
 	return 0;
 }
@@ -21,7 +23,8 @@ static int sde_cdev_get_cur_brightness(struct thermal_cooling_device *cdev,
 {
 	struct sde_cdev *disp_cdev = (struct sde_cdev *)cdev->devdata;
 
-	*state = disp_cdev->thermal_state;
+	*state = ((disp_cdev->bd->props.max_brightness -
+			disp_cdev->thermal_state) / disp_cdev->cdev_sf);
 
 	return 0;
 }
@@ -32,10 +35,11 @@ static int sde_cdev_set_cur_brightness(struct thermal_cooling_device *cdev,
 	struct sde_cdev *disp_cdev = (struct sde_cdev *)cdev->devdata;
 	unsigned long brightness_lvl = 0;
 
-	if (state == 0 || state > 200)
+	if (state > disp_cdev->bd->props.max_brightness / disp_cdev->cdev_sf)
 		return -EINVAL;
 
-	brightness_lvl = disp_cdev->bd->props.max_brightness * state / 200;
+	brightness_lvl = disp_cdev->bd->props.max_brightness -
+				(state * disp_cdev->cdev_sf);
 	if (brightness_lvl == disp_cdev->thermal_state)
 		return 0;
 	disp_cdev->thermal_state = brightness_lvl;
@@ -65,7 +69,7 @@ struct sde_cdev *backlight_cdev_register(struct device *dev,
 	disp_cdev = devm_kzalloc(dev, sizeof(*disp_cdev), GFP_KERNEL);
 	if (!disp_cdev)
 		return ERR_PTR(-ENOMEM);
-	disp_cdev->thermal_state = 200;
+	disp_cdev->thermal_state = 0;
 	disp_cdev->bd = bd;
 
 	if (bd->props.max_brightness > BRIGHTNESS_CDEV_MAX)
