@@ -15,6 +15,7 @@
 struct dsi_panel;
 struct dsi_panel_cmd_set;
 struct dsi_parser_utils;
+struct dsi_display_mode;
 
 enum dsi_panel_mi_doze {
 	DSI_PANEL_MI_DOZE_OFF,
@@ -72,6 +73,8 @@ enum dsi_panel_mi_doze {
  * @vdc_update:   <register index length> triples of the panel on commands
  *                receiving @vdc_param in order.
  * @vdc_update_count: Number of u32 in @vdc_update.
+ * @dfps_vfp:     <fps vfp> pairs overriding the dynamic fps front porches.
+ * @dfps_vfp_count: Number of u32 in @dfps_vfp.
  */
 struct dsi_panel_mi {
 	bool hbm_reg53;
@@ -129,6 +132,9 @@ struct dsi_panel_mi {
 	u8 vdc_param[8];
 	u32 vdc_update[6];
 	int vdc_update_count;
+
+	u32 dfps_vfp[8];
+	int dfps_vfp_count;
 };
 
 void dsi_panel_mi_parse(struct dsi_panel *panel);
@@ -166,5 +172,8 @@ void dsi_panel_mi_update_on_cmds(struct dsi_panel *panel);
 bool dsi_panel_mi_has_fps_gamma(struct dsi_panel *panel);
 
 void dsi_panel_mi_fps_gamma(struct dsi_panel *panel);
+
+void dsi_panel_mi_override_dfps_vfp(struct dsi_panel *panel,
+		struct dsi_display_mode *mode);
 
 #endif /* _DSI_PANEL_MI_H_ */

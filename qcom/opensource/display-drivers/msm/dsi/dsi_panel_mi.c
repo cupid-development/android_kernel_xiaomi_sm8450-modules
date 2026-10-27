@@ -235,6 +235,13 @@ void dsi_panel_mi_parse(struct dsi_panel *panel)
 	dsi_panel_mi_parse_lhbm(panel);
 	dsi_panel_mi_parse_esd(panel);
 	dsi_panel_mi_parse_vdc(panel);
+
+	mi->dfps_vfp_count = utils->count_u32_elems(utils->data, "mi,dfps-vfp");
+	if (mi->dfps_vfp_count <= 0 || mi->dfps_vfp_count % 2 ||
+	    mi->dfps_vfp_count > ARRAY_SIZE(mi->dfps_vfp) ||
+	    utils->read_u32_array(utils->data, "mi,dfps-vfp", mi->dfps_vfp,
+			mi->dfps_vfp_count))
+		mi->dfps_vfp_count = 0;
 }
 
 void dsi_panel_mi_parse_cmd_update(struct dsi_panel_cmd_set *set,
@@ -815,4 +822,15 @@ void dsi_panel_mi_fps_gamma(struct dsi_panel *panel)
 
 	if (dsi_panel_tx_cmd_set(panel, dsi_panel_mi_fps_gamma_type(panel)))
 		DSI_ERR("[%s] failed to switch fps gamma\n", panel->name);
+}
+
+void dsi_panel_mi_override_dfps_vfp(struct dsi_panel *panel,
+		struct dsi_display_mode *mode)
+{
+	struct dsi_panel_mi *mi = &panel->mi;
+	int i;
+
+	for (i = 0; i < mi->dfps_vfp_count; i += 2)
+		if (mode->timing.refresh_rate == mi->dfps_vfp[i])
+			mode->timing.v_front_porch = mi->dfps_vfp[i + 1];
 }
