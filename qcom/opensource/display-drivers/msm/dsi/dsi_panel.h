@@ -18,6 +18,7 @@
 
 #include "dsi_defs.h"
 #include "dsi_ctrl_hw.h"
+#include "dsi_panel_mi.h"
 #include "dsi_clk.h"
 #include "dsi_pwr.h"
 #include "dsi_parser.h"
@@ -268,6 +269,8 @@ struct dsi_panel {
 	bool ulps_suspend_enabled;
 	bool allow_phy_power_off;
 	bool reset_gpio_always_on;
+
+	struct dsi_panel_mi mi;
 	atomic_t esd_recovery_pending;
 
 	bool panel_initialized;
@@ -352,6 +355,9 @@ int dsi_panel_get_dfps_caps(struct dsi_panel *panel,
 			    struct dsi_dfps_capabilities *dfps_caps);
 
 int dsi_panel_pre_prepare(struct dsi_panel *panel);
+
+int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
+		enum dsi_cmd_set_type type);
 
 int dsi_panel_set_lp1(struct dsi_panel *panel);
 
