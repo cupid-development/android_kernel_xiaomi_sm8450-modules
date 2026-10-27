@@ -109,6 +109,8 @@ void dsi_panel_mi_parse(struct dsi_panel *panel)
 			&mi->bl_sync_threshold);
 	utils->read_u32_array(utils->data, "mi,power-off-delay-ms",
 			mi->power_off_delay_ms, ARRAY_SIZE(mi->power_off_delay_ms));
+	utils->read_u32(utils->data, "mi,post-unprepare-delay-ms",
+			&mi->post_unprepare_delay_ms);
 	mi->switch_wait_vblank = utils->read_bool(utils->data,
 			"mi,timing-switch-wait-vblank");
 

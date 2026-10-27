@@ -9056,6 +9056,9 @@ int dsi_display_unprepare(struct dsi_display *display)
 	dsi_display_ctrl_isr_configure(display, false);
 
 	if (!display->poms_pending && !is_skip_op_required(display)) {
+		if (display->panel->mi.post_unprepare_delay_ms)
+			usleep_range(display->panel->mi.post_unprepare_delay_ms * 1000,
+				display->panel->mi.post_unprepare_delay_ms * 1000 + 10);
 		rc = dsi_panel_post_unprepare(display->panel);
 		if (rc)
 			DSI_ERR("[%s] panel post-unprepare failed, rc=%d\n",
