@@ -48,6 +48,8 @@ enum dsi_panel_mi_doze {
  * @dbv_skip:     Range of DBVs the panel can't display, mapped to the DBV below.
  * @bl_sync_threshold: DBVs above this need the BL sync commands, 0 if unused.
  * @bl_sync:      BL sync is enabled.
+ * @power_off_delay_ms: Delays after disabling the panel enable GPIO and
+ *                after resetting the panel while powering off.
  */
 struct dsi_panel_mi {
 	bool hbm_reg53;
@@ -79,6 +81,8 @@ struct dsi_panel_mi {
 	u32 dbv_skip[2];
 	u32 bl_sync_threshold;
 	bool bl_sync;
+
+	u32 power_off_delay_ms[2];
 };
 
 void dsi_panel_mi_parse(struct dsi_panel *panel);

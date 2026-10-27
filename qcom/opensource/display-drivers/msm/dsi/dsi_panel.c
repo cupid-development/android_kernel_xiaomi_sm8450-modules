@@ -400,6 +400,9 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
 		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
 
+	if (panel->mi.power_off_delay_ms[0])
+		mdelay(panel->mi.power_off_delay_ms[0]);
+
 	if (gpio_is_valid(panel->reset_config.reset_gpio) &&
 					!panel->reset_gpio_always_on)
 		gpio_set_value(panel->reset_config.reset_gpio, 0);
@@ -413,6 +416,9 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 			DSI_WARN("set dir for panel test gpio failed rc=%d\n",
 				 rc);
 	}
+
+	if (panel->mi.power_off_delay_ms[1])
+		mdelay(panel->mi.power_off_delay_ms[1]);
 
 	rc = dsi_panel_set_pinctrl_state(panel, false);
 	if (rc) {
