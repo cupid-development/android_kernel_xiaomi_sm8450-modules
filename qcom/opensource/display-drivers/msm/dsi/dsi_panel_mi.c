@@ -170,6 +170,9 @@ void dsi_panel_mi_parse(struct dsi_panel *panel)
 	mi->batch = -1;
 	utils->read_u32_array(utils->data, "mi,batch-doze-lbm-reg53",
 			mi->batch_doze_lbm, ARRAY_SIZE(mi->batch_doze_lbm));
+	utils->read_u32(utils->data, "mi,doze-cmd-fps", &mi->doze_cmd_fps);
+	utils->read_u32_array(utils->data, "mi,doze-fallback-dbv",
+			mi->doze_fallback_dbv, ARRAY_SIZE(mi->doze_fallback_dbv));
 
 	dsi_panel_mi_parse_lhbm(panel);
 	dsi_panel_mi_parse_esd(panel);
@@ -349,6 +352,19 @@ bool dsi_panel_mi_has_doze(struct dsi_panel *panel)
 	return panel->cur_mode->priv_info->cmd_sets[DSI_CMD_SET_MI_DOZE_LBM].count;
 }
 
+static int dsi_panel_mi_set_dbv_lp(struct dsi_panel *panel, u32 dbv)
+{
+	struct mipi_dsi_device *dsi = &panel->mipi_device;
+	unsigned long mode_flags = dsi->mode_flags;
+	int rc;
+
+	dsi->mode_flags |= MIPI_DSI_MODE_LPM;
+	rc = mipi_dsi_dcs_set_display_brightness(dsi, dbv);
+	dsi->mode_flags = mode_flags;
+
+	return rc < 0 ? rc : 0;
+}
+
 static enum dsi_panel_mi_doze dsi_panel_mi_doze_target(struct dsi_panel_mi *mi)
 {
 	return mi->last_bl_lvl > mi->doze_hbm_threshold ?
@@ -395,7 +411,12 @@ int dsi_panel_mi_set_doze(struct dsi_panel *panel, bool doze)
 		break;
 	}
 
-	rc = dsi_panel_tx_cmd_set(panel, type);
+	if (target != DSI_PANEL_MI_DOZE_OFF && mi->doze_cmd_fps &&
+	    panel->cur_mode->timing.refresh_rate != mi->doze_cmd_fps)
+		rc = dsi_panel_mi_set_dbv_lp(panel, mi->doze_fallback_dbv[
+				target == DSI_PANEL_MI_DOZE_HBM ? 0 : 1]);
+	else
+		rc = dsi_panel_tx_cmd_set(panel, type);
 	if (rc)
 		DSI_ERR("[%s] failed to set doze mode %d, rc=%d\n",
 				panel->name, target, rc);

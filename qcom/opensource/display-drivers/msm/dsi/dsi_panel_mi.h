@@ -58,6 +58,8 @@ enum dsi_panel_mi_doze {
  * @post_unprepare_delay_ms: Delay before powering off the panel.
  * @batch_doze_lbm: Batches below [0] need 0x53 set to [1] in doze LBM.
  * @batch:        Panel batch (register 0xDA), -1 if not read yet.
+ * @doze_cmd_fps: Refresh rate the doze commands are made for, 0 for any.
+ * @doze_fallback_dbv: HBM and LBM doze DBVs written at other refresh rates.
  */
 struct dsi_panel_mi {
 	bool hbm_reg53;
@@ -102,6 +104,9 @@ struct dsi_panel_mi {
 
 	u32 batch_doze_lbm[2];
 	int batch;
+
+	u32 doze_cmd_fps;
+	u32 doze_fallback_dbv[2];
 };
 
 void dsi_panel_mi_parse(struct dsi_panel *panel);
