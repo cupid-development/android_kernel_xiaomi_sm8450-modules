@@ -141,6 +141,8 @@ static void dsi_panel_mi_parse_esd(struct dsi_panel *panel)
 			"mi,panel-ignore-esd-in-aod");
 }
 
+static void dsi_panel_mi_update_gamma(struct dsi_panel *panel);
+
 static void dsi_panel_mi_dimming_work(struct work_struct *work)
 {
 	struct dsi_panel_mi *mi = container_of(to_delayed_work(work),
@@ -312,6 +314,9 @@ bool dsi_panel_mi_set_backlight(struct dsi_panel *panel, u32 *bl_lvl)
 		return true;
 	}
 
+	if (mi->gamma_pending)
+		dsi_panel_mi_update_gamma(panel);
+
 	if (*bl_lvl && !mi->bl_on)
 		dsi_panel_mi_queue_dimming(panel);
 	mi->bl_on = *bl_lvl;
@@ -373,6 +378,7 @@ void dsi_panel_mi_reset_state(struct dsi_panel *panel)
 	panel->mi.lhbm_nits = 0;
 	panel->mi.bl_sync = false;
 	panel->mi.gamma_updated = false;
+	panel->mi.gamma_pending = false;
 	panel->mi.bl_on = false;
 	if (panel->cur_mode)
 		panel->mi.last_fps = panel->cur_mode->timing.refresh_rate;
@@ -654,27 +660,40 @@ enum dsi_cmd_set_type dsi_panel_mi_timing_switch_type(struct dsi_panel *panel)
 	return DSI_CMD_SET_TIMING_SWITCH;
 }
 
+static void dsi_panel_mi_update_gamma(struct dsi_panel *panel)
+{
+	struct dsi_panel_mi *mi = &panel->mi;
+	u32 vsync_us = mi->last_fps ? USEC_PER_SEC / mi->last_fps : 0;
+
+	/* The timing switch needs to take effect first */
+	if (ktime_us_delta(ktime_get(), mi->switch_time) <= vsync_us)
+		usleep_range(vsync_us, vsync_us + 10);
+
+	if (dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_AUTO_UPDATE_GAMMA)) {
+		DSI_ERR("[%s] failed to update gamma\n", panel->name);
+		return;
+	}
+
+	mi->gamma_updated = true;
+	mi->gamma_pending = false;
+}
+
 void dsi_panel_mi_post_timing_switch(struct dsi_panel *panel)
 {
 	struct dsi_panel_mi *mi = &panel->mi;
 	struct dsi_panel_cmd_set *sets = panel->cur_mode->priv_info->cmd_sets;
-	u32 last_fps = mi->last_fps;
+
+	mi->switch_time = ktime_get();
+
+	/* Update right away after the first switch, later with the backlight */
+	if (!mi->doze && sets[DSI_CMD_SET_MI_AUTO_UPDATE_GAMMA].count) {
+		if (!mi->gamma_updated)
+			dsi_panel_mi_update_gamma(panel);
+		else
+			mi->gamma_pending = true;
+	}
 
 	mi->last_fps = panel->cur_mode->timing.refresh_rate;
-
-	if (mi->gamma_updated || mi->doze ||
-	    !sets[DSI_CMD_SET_MI_AUTO_UPDATE_GAMMA].count)
-		return;
-
-	/* Wait for the timing switch to take effect */
-	if (last_fps)
-		usleep_range(USEC_PER_SEC / last_fps,
-				USEC_PER_SEC / last_fps + 10);
-
-	if (dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_AUTO_UPDATE_GAMMA))
-		DSI_ERR("[%s] failed to update gamma\n", panel->name);
-	else
-		mi->gamma_updated = true;
 }
 
 void dsi_panel_mi_read_batch(struct dsi_panel *panel)

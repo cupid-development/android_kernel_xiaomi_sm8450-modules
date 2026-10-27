@@ -6,6 +6,7 @@
 #ifndef _DSI_PANEL_MI_H_
 #define _DSI_PANEL_MI_H_
 
+#include <linux/ktime.h>
 #include <linux/types.h>
 #include <linux/workqueue.h>
 
@@ -55,6 +56,8 @@ enum dsi_panel_mi_doze {
  *                after resetting the panel while powering off.
  * @last_fps:     Refresh rate before the current timing switch.
  * @gamma_updated: Gamma was updated after the first timing switch.
+ * @gamma_pending: Gamma needs to be updated with the next backlight change.
+ * @switch_time:  Time of the last timing switch.
  * @switch_wait_vblank: Wait for a vblank after timing switches.
  * @post_unprepare_delay_ms: Delay before powering off the panel.
  * @batch_doze_lbm: Batches below [0] need 0x53 set to [1] in doze LBM.
@@ -103,6 +106,8 @@ struct dsi_panel_mi {
 
 	u32 last_fps;
 	bool gamma_updated;
+	bool gamma_pending;
+	ktime_t switch_time;
 
 	bool switch_wait_vblank;
 	u32 post_unprepare_delay_ms;
