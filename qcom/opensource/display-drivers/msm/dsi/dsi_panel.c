@@ -2319,6 +2319,11 @@ static int dsi_panel_parse_misc_features(struct dsi_panel *panel)
 	panel->te_using_watchdog_timer = utils->read_bool(utils->data,
 					"qcom,mdss-dsi-te-using-wd");
 
+	panel->switch_vsync_delay = utils->read_bool(utils->data,
+			"qcom,mdss-dsi-panel-vsync-delay");
+	DSI_DEBUG("%s: vsync_delay feature %s\n", __func__,
+		(panel->switch_vsync_delay ? "enabled" : "disabled"));
+
 	panel->sync_broadcast_en = utils->read_bool(utils->data,
 			"qcom,cmd-sync-wait-broadcast");
 

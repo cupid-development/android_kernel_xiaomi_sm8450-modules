@@ -36,7 +36,7 @@ struct msm_commit {
 	struct kthread_work commit_work;
 };
 
-static struct drm_connector_state *_msm_get_conn_state(struct drm_crtc_state *crtc_state)
+struct drm_connector_state *_msm_get_conn_state(struct drm_crtc_state *crtc_state)
 {
 	struct drm_connector *conn;
 	struct drm_connector_state *conn_state = NULL;
