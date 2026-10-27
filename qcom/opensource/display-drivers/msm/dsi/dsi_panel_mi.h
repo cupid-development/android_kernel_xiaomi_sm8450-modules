@@ -51,6 +51,7 @@ enum dsi_panel_mi_doze {
  * @power_off_delay_ms: Delays after disabling the panel enable GPIO and
  *                after resetting the panel while powering off.
  * @last_fps:     Refresh rate before the current timing switch.
+ * @gamma_updated: Gamma was updated after the first timing switch.
  */
 struct dsi_panel_mi {
 	bool hbm_reg53;
@@ -86,6 +87,7 @@ struct dsi_panel_mi {
 	u32 power_off_delay_ms[2];
 
 	u32 last_fps;
+	bool gamma_updated;
 };
 
 void dsi_panel_mi_parse(struct dsi_panel *panel);

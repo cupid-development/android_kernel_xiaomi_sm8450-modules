@@ -3,6 +3,7 @@
  * Copyright (C) 2026 The LineageOS Project
  */
 
+#include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
 #include <linux/of_gpio.h>
@@ -274,6 +275,7 @@ void dsi_panel_mi_reset_state(struct dsi_panel *panel)
 	panel->mi.doze_active = DSI_PANEL_MI_DOZE_OFF;
 	panel->mi.lhbm_nits = 0;
 	panel->mi.bl_sync = false;
+	panel->mi.gamma_updated = false;
 	if (panel->cur_mode)
 		panel->mi.last_fps = panel->cur_mode->timing.refresh_rate;
 }
@@ -522,5 +524,23 @@ enum dsi_cmd_set_type dsi_panel_mi_timing_switch_type(struct dsi_panel *panel)
 
 void dsi_panel_mi_post_timing_switch(struct dsi_panel *panel)
 {
-	panel->mi.last_fps = panel->cur_mode->timing.refresh_rate;
+	struct dsi_panel_mi *mi = &panel->mi;
+	struct dsi_panel_cmd_set *sets = panel->cur_mode->priv_info->cmd_sets;
+	u32 last_fps = mi->last_fps;
+
+	mi->last_fps = panel->cur_mode->timing.refresh_rate;
+
+	if (mi->gamma_updated || mi->doze ||
+	    !sets[DSI_CMD_SET_MI_AUTO_UPDATE_GAMMA].count)
+		return;
+
+	/* Wait for the timing switch to take effect */
+	if (last_fps)
+		usleep_range(USEC_PER_SEC / last_fps,
+				USEC_PER_SEC / last_fps + 10);
+
+	if (dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_AUTO_UPDATE_GAMMA))
+		DSI_ERR("[%s] failed to update gamma\n", panel->name);
+	else
+		mi->gamma_updated = true;
 }
