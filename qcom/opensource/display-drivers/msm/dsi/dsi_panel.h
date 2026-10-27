@@ -282,6 +282,7 @@ struct dsi_panel {
 
 	bool sync_broadcast_en;
 	u32 dsc_count;
+	u32 dsc_rc_profile;
 	u32 lm_count;
 
 	int panel_test_gpio;

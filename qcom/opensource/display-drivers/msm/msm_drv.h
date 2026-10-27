@@ -463,8 +463,13 @@ struct msm_display_dsc_info {
 	u32 dsc_4hsmerge_padding;
 	u32 dsc_4hsmerge_alignment;
 	bool half_panel_pu;
+	u32 rc_profile;
 };
 
+/* Panel vendor specific DSC rate control tweaks */
+#define MSM_DSC_RC_NVT_MAX_QP	BIT(0)
+#define MSM_DSC_RC_NVT_MIN_QP	BIT(1)
+#define MSM_DSC_PPS88_ZERO	BIT(2)
 
 /**
  * struct msm_display_vdc_info - defines vdc configuration

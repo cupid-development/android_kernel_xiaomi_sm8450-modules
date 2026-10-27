@@ -2674,8 +2674,31 @@ static int dsi_panel_parse_phy_timing(struct dsi_display_mode *mode,
 	return rc;
 }
 
+static void dsi_panel_parse_dsc_rc_profile(struct dsi_panel *panel)
+{
+	struct dsi_parser_utils *utils = &panel->utils;
+	const char *profile;
+
+	panel->dsc_rc_profile = 0;
+
+	profile = utils->get_property(utils->data, "mi,dsc-rc-profile", NULL);
+	if (!profile)
+		return;
+
+	if (!strcmp(profile, "nvt"))
+		panel->dsc_rc_profile = MSM_DSC_RC_NVT_MAX_QP;
+	else if (!strcmp(profile, "nt37705"))
+		panel->dsc_rc_profile = MSM_DSC_RC_NVT_MAX_QP |
+			MSM_DSC_RC_NVT_MIN_QP;
+	else if (!strcmp(profile, "nt37801"))
+		panel->dsc_rc_profile = MSM_DSC_RC_NVT_MAX_QP |
+			MSM_DSC_RC_NVT_MIN_QP | MSM_DSC_PPS88_ZERO;
+	else
+		DSI_ERR("[%s] unknown dsc rc profile %s\n", panel->name, profile);
+}
+
 static int dsi_panel_parse_dsc_params(struct dsi_display_mode *mode,
-				struct dsi_parser_utils *utils)
+				struct dsi_parser_utils *utils, u32 rc_profile)
 {
 	u32 data;
 	int rc = -EINVAL;
@@ -2839,8 +2862,9 @@ static int dsi_panel_parse_dsc_params(struct dsi_display_mode *mode,
 	priv_info->dsc.config.slice_count = DIV_ROUND_UP(intf_width,
 		priv_info->dsc.config.slice_width);
 
+	priv_info->dsc.rc_profile = rc_profile;
 	rc = sde_dsc_populate_dsc_config(&priv_info->dsc.config,
-			priv_info->dsc.scr_rev);
+			priv_info->dsc.scr_rev, rc_profile);
 	if (rc) {
 		DSI_DEBUG("failed populating dsc params\n");
 		rc = -EINVAL;
@@ -3734,6 +3758,8 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 	if (rc)
 		DSI_ERR("failed to parse misc features, rc=%d\n", rc);
 
+	dsi_panel_parse_dsc_rc_profile(panel);
+
 	rc = dsi_panel_parse_hdr_config(panel);
 	if (rc)
 		DSI_ERR("failed to parse hdr config, rc=%d\n", rc);
@@ -4272,7 +4298,7 @@ int dsi_panel_get_mode(struct dsi_panel *panel,
 				DSI_ERR("failed to parse dynamic clk rates, rc=%d\n", rc);
 		}
 
-		rc = dsi_panel_parse_dsc_params(mode, utils);
+		rc = dsi_panel_parse_dsc_params(mode, utils, panel->dsc_rc_profile);
 		if (rc) {
 			DSI_ERR("failed to parse dsc params, rc=%d\n", rc);
 			goto parse_fail;
