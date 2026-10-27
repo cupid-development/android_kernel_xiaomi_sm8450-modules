@@ -50,6 +50,7 @@ enum dsi_panel_mi_doze {
  * @bl_sync:      BL sync is enabled.
  * @power_off_delay_ms: Delays after disabling the panel enable GPIO and
  *                after resetting the panel while powering off.
+ * @last_fps:     Refresh rate before the current timing switch.
  */
 struct dsi_panel_mi {
 	bool hbm_reg53;
@@ -83,6 +84,8 @@ struct dsi_panel_mi {
 	bool bl_sync;
 
 	u32 power_off_delay_ms[2];
+
+	u32 last_fps;
 };
 
 void dsi_panel_mi_parse(struct dsi_panel *panel);
@@ -106,5 +109,9 @@ int dsi_panel_mi_set_doze(struct dsi_panel *panel, bool doze);
 int dsi_panel_mi_set_lhbm(struct dsi_panel *panel, u32 nits);
 
 void dsi_panel_mi_esd_irq_ctrl(struct dsi_panel *panel, bool enable);
+
+enum dsi_cmd_set_type dsi_panel_mi_timing_switch_type(struct dsi_panel *panel);
+
+void dsi_panel_mi_post_timing_switch(struct dsi_panel *panel);
 
 #endif /* _DSI_PANEL_MI_H_ */

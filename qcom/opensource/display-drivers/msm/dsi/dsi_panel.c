@@ -1968,6 +1968,7 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"mi,mdss-dsi-local-hbm-off-to-llpm-command",
 	"mi,mdss-dsi-bl-sync-on-command",
 	"mi,mdss-dsi-bl-sync-off-command",
+	"mi,mdss-dsi-exit-90fps-timing-switch-command",
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -2010,6 +2011,7 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"mi,mdss-dsi-local-hbm-off-to-llpm-command-state",
 	"mi,mdss-dsi-bl-sync-on-command-state",
 	"mi,mdss-dsi-bl-sync-off-command-state",
+	"mi,mdss-dsi-exit-90fps-timing-switch-command-state",
 };
 
 int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
@@ -4888,10 +4890,12 @@ int dsi_panel_switch(struct dsi_panel *panel)
 
 	mutex_lock(&panel->panel_lock);
 
-	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_TIMING_SWITCH);
+	rc = dsi_panel_tx_cmd_set(panel, dsi_panel_mi_timing_switch_type(panel));
 	if (rc)
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_TIMING_SWITCH cmds, rc=%d\n",
 		       panel->name, rc);
+
+	dsi_panel_mi_post_timing_switch(panel);
 
 	mutex_unlock(&panel->panel_lock);
 	return rc;
