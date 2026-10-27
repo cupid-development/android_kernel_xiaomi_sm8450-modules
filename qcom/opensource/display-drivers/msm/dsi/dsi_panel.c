@@ -433,24 +433,15 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 
 	return rc;
 }
-int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
-				enum dsi_cmd_set_type type)
+static int dsi_panel_tx_cmds(struct dsi_panel *panel,
+		struct dsi_panel_cmd_set *set, enum dsi_cmd_set_type type)
 {
 	int rc = 0, i = 0;
 	ssize_t len;
-	struct dsi_cmd_desc *cmds;
-	u32 count;
-	enum dsi_cmd_set_state state;
-	struct dsi_display_mode *mode;
+	struct dsi_cmd_desc *cmds = set->cmds;
+	u32 count = set->count;
+	enum dsi_cmd_set_state state = set->state;
 
-	if (!panel || !panel->cur_mode)
-		return -EINVAL;
-
-	mode = panel->cur_mode;
-
-	cmds = mode->priv_info->cmd_sets[type].cmds;
-	count = mode->priv_info->cmd_sets[type].count;
-	state = mode->priv_info->cmd_sets[type].state;
 	SDE_EVT32(type, state, count);
 
 	if (count == 0) {
@@ -481,6 +472,25 @@ int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
 	}
 error:
 	return rc;
+}
+
+int dsi_panel_tx_status_offset_cmd(struct dsi_panel *panel)
+{
+	if (!panel)
+		return -EINVAL;
+
+	return dsi_panel_tx_cmds(panel, &panel->esd_config.offset_cmd,
+			DSI_CMD_SET_PANEL_STATUS_OFFSET);
+}
+
+int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
+				enum dsi_cmd_set_type type)
+{
+	if (!panel || !panel->cur_mode)
+		return -EINVAL;
+
+	return dsi_panel_tx_cmds(panel,
+			&panel->cur_mode->priv_info->cmd_sets[type], type);
 }
 
 static int dsi_panel_pinctrl_deinit(struct dsi_panel *panel)
@@ -1944,6 +1954,7 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,video-mode-switch-out-commands",
 	"qcom,cmd-mode-switch-in-commands",
 	"qcom,cmd-mode-switch-out-commands",
+	"qcom,mdss-dsi-panel-status-offset-command",
 	"qcom,mdss-dsi-panel-status-command",
 	"qcom,mdss-dsi-lp1-command",
 	"qcom,mdss-dsi-lp2-command",
@@ -1992,6 +2003,7 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,video-mode-switch-out-commands-state",
 	"qcom,cmd-mode-switch-in-commands-state",
 	"qcom,cmd-mode-switch-out-commands-state",
+	"qcom,mdss-dsi-panel-status-offset-command-state",
 	"qcom,mdss-dsi-panel-status-command-state",
 	"qcom,mdss-dsi-lp1-command-state",
 	"qcom,mdss-dsi-lp2-command-state",
@@ -3492,6 +3504,7 @@ static void dsi_panel_esd_config_deinit(struct drm_panel_esd_config *esd_config)
 	kfree(esd_config->status_valid_params);
 	kfree(esd_config->status_cmds_rlen);
 	kfree(esd_config->status_cmd.cmds);
+	kfree(esd_config->offset_cmd.cmds);
 }
 
 int dsi_panel_parse_esd_reg_read_configs(struct dsi_panel *panel)
@@ -3511,6 +3524,9 @@ int dsi_panel_parse_esd_reg_read_configs(struct dsi_panel *panel)
 	esd_config = &panel->esd_config;
 	if (!esd_config)
 		return -EINVAL;
+
+	dsi_panel_parse_cmd_sets_sub(&esd_config->offset_cmd,
+				DSI_CMD_SET_PANEL_STATUS_OFFSET, utils);
 
 	dsi_panel_parse_cmd_sets_sub(&esd_config->status_cmd,
 				DSI_CMD_SET_PANEL_STATUS, utils);
@@ -3611,6 +3627,9 @@ error2:
 error1:
 	kfree(esd_config->status_cmd.cmds);
 error:
+	kfree(esd_config->offset_cmd.cmds);
+	esd_config->offset_cmd.cmds = NULL;
+	esd_config->offset_cmd.count = 0;
 	return rc;
 }
 

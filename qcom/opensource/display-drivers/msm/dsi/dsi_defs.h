@@ -258,6 +258,7 @@ enum dsi_dyn_clk_feature_type {
  * @DSI_CMD_SET_VID_SWITCH_OUT:            Video mode switch out
  * @DSI_CMD_SET_CMD_SWITCH_IN:             Cmd mode switch in
  * @DSI_CMD_SET_CMD_SWITCH_OUT:            Cmd mode switch out
+ * @DSI_CMD_SET_PANEL_STATUS_OFFSET:       Panel status register offset
  * @DSI_CMD_SET_PANEL_STATUS:              Panel status
  * @DSI_CMD_SET_LP1:                       Low power mode 1
  * @DSI_CMD_SET_LP2:                       Low power mode 2
@@ -286,6 +287,7 @@ enum dsi_cmd_set_type {
 	DSI_CMD_SET_VID_SWITCH_OUT,
 	DSI_CMD_SET_CMD_SWITCH_IN,
 	DSI_CMD_SET_CMD_SWITCH_OUT,
+	DSI_CMD_SET_PANEL_STATUS_OFFSET,
 	DSI_CMD_SET_PANEL_STATUS,
 	DSI_CMD_SET_LP1,
 	DSI_CMD_SET_LP2,
