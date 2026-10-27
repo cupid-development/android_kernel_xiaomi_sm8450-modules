@@ -267,6 +267,9 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 	rc = dsi_panel_set_backlight(panel, (u32)bl_temp);
 	if (rc)
 		DSI_ERR("unable to set backlight\n");
+	else
+		dsi_display_mi_notify(dsi_display, DSI_DISPLAY_MI_DBV,
+				(u32)bl_temp);
 
 error:
 	mutex_unlock(&panel->panel_lock);
@@ -1382,6 +1385,8 @@ int dsi_display_set_power(struct drm_connector *connector,
 			rc = dsi_panel_set_nolp(display->panel);
 		break;
 	case SDE_MODE_DPMS_OFF:
+		dsi_display_mi_notify(display, DSI_DISPLAY_MI_POWER, power_mode);
+		return rc;
 	default:
 		return rc;
 	}
@@ -1390,8 +1395,10 @@ int dsi_display_set_power(struct drm_connector *connector,
 	DSI_DEBUG("Power mode transition from %d to %d %s",
 			display->panel->power_mode, power_mode,
 			rc ? "failed" : "successful");
-	if (!rc)
+	if (!rc) {
 		display->panel->power_mode = power_mode;
+		dsi_display_mi_notify(display, DSI_DISPLAY_MI_POWER, power_mode);
+	}
 
 	return rc;
 }
@@ -7805,6 +7812,7 @@ int dsi_display_set_mode(struct dsi_display *display,
 			adj_mode.priv_info->clk_rate_hz);
 
 	memcpy(display->panel->cur_mode, &adj_mode, sizeof(adj_mode));
+	dsi_display_mi_notify(display, DSI_DISPLAY_MI_FPS, timing.refresh_rate);
 error:
 	mutex_unlock(&display->display_lock);
 	return rc;

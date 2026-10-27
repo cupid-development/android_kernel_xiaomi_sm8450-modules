@@ -12,6 +12,13 @@
 
 struct dsi_display;
 
+enum dsi_display_mi_state {
+	DSI_DISPLAY_MI_POWER,
+	DSI_DISPLAY_MI_FPS,
+	DSI_DISPLAY_MI_DBV,
+	DSI_DISPLAY_MI_STATE_MAX,
+};
+
 /**
  * struct dsi_display_mi - Xiaomi specific display state
  * @worker:       Worker sending local HBM commands.
@@ -20,6 +27,7 @@ struct dsi_display;
  * @lhbm_target:  Requested local HBM brightness in nits, 0 if off.
  * @allowed:      Panel is on and may receive local HBM commands.
  * @fod_ui:       Local HBM is visible on the panel.
+ * @state:        Values of the pollable state nodes.
  */
 struct dsi_display_mi {
 	struct kthread_worker *worker;
@@ -29,6 +37,7 @@ struct dsi_display_mi {
 	u32 lhbm_target;
 	bool allowed;
 	bool fod_ui;
+	u32 state[DSI_DISPLAY_MI_STATE_MAX];
 };
 
 void dsi_display_mi_init(struct dsi_display *display);
@@ -36,5 +45,8 @@ void dsi_display_mi_init(struct dsi_display *display);
 void dsi_display_mi_deinit(struct dsi_display *display);
 
 void dsi_display_mi_set_allowed(struct dsi_display *display, bool allowed);
+
+void dsi_display_mi_notify(struct dsi_display *display,
+		enum dsi_display_mi_state state, u32 value);
 
 #endif /* _DSI_DISPLAY_MI_H_ */

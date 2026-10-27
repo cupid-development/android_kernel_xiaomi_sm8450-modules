@@ -85,6 +85,74 @@ void dsi_display_mi_set_allowed(struct dsi_display *display, bool allowed)
 		dsi_display_mi_set_fod_ui(display, false);
 }
 
+static const char * const dsi_display_mi_state_names[] = {
+	[DSI_DISPLAY_MI_POWER] = "panel_power_state",
+	[DSI_DISPLAY_MI_FPS] = "dynamic_fps",
+	[DSI_DISPLAY_MI_DBV] = "dbv",
+};
+
+void dsi_display_mi_notify(struct dsi_display *display,
+		enum dsi_display_mi_state state, u32 value)
+{
+	struct dsi_display_mi *mi = &display->mi;
+	bool changed;
+
+	mutex_lock(&mi->lock);
+	changed = mi->state[state] != value;
+	mi->state[state] = value;
+	mutex_unlock(&mi->lock);
+
+	if (changed)
+		sysfs_notify(&display->pdev->dev.kobj, NULL,
+				dsi_display_mi_state_names[state]);
+}
+
+static ssize_t dsi_display_mi_state_show(struct device *dev, char *buf,
+		enum dsi_display_mi_state state)
+{
+	struct dsi_display *display = dev_get_drvdata(dev);
+	u32 value;
+
+	mutex_lock(&display->mi.lock);
+	value = display->mi.state[state];
+	mutex_unlock(&display->mi.lock);
+
+	return sysfs_emit(buf, "%u\n", value);
+}
+
+static ssize_t panel_power_state_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return dsi_display_mi_state_show(dev, buf, DSI_DISPLAY_MI_POWER);
+}
+
+static ssize_t dynamic_fps_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return dsi_display_mi_state_show(dev, buf, DSI_DISPLAY_MI_FPS);
+}
+
+static ssize_t dbv_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return dsi_display_mi_state_show(dev, buf, DSI_DISPLAY_MI_DBV);
+}
+
+static DEVICE_ATTR_RO(panel_power_state);
+static DEVICE_ATTR_RO(dynamic_fps);
+static DEVICE_ATTR_RO(dbv);
+
+static struct attribute *dsi_display_mi_state_attrs[] = {
+	&dev_attr_panel_power_state.attr,
+	&dev_attr_dynamic_fps.attr,
+	&dev_attr_dbv.attr,
+	NULL,
+};
+
+static const struct attribute_group dsi_display_mi_state_group = {
+	.attrs = dsi_display_mi_state_attrs,
+};
+
 static ssize_t local_hbm_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -154,6 +222,11 @@ void dsi_display_mi_init(struct dsi_display *display)
 
 	mutex_init(&mi->lock);
 
+	mi->state[DSI_DISPLAY_MI_POWER] = SDE_MODE_DPMS_OFF;
+	if (sysfs_create_group(&display->pdev->dev.kobj,
+			&dsi_display_mi_state_group))
+		DSI_ERR("failed to create state sysfs nodes\n");
+
 	if (!display->panel->mi.lhbm)
 		return;
 
@@ -175,6 +248,9 @@ void dsi_display_mi_init(struct dsi_display *display)
 void dsi_display_mi_deinit(struct dsi_display *display)
 {
 	struct dsi_display_mi *mi = &display->mi;
+
+	sysfs_remove_group(&display->pdev->dev.kobj,
+			&dsi_display_mi_state_group);
 
 	if (!mi->worker)
 		return;
