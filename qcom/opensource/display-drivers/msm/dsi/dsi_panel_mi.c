@@ -141,6 +141,32 @@ static void dsi_panel_mi_parse_esd(struct dsi_panel *panel)
 			"mi,panel-ignore-esd-in-aod");
 }
 
+static void dsi_panel_mi_dimming_work(struct work_struct *work)
+{
+	struct dsi_panel_mi *mi = container_of(to_delayed_work(work),
+			struct dsi_panel_mi, dimming_work);
+	struct dsi_panel *panel = container_of(mi, struct dsi_panel, mi);
+
+	mutex_lock(&panel->panel_lock);
+	/* The HBM, doze and local HBM commands handle dimming themselves */
+	if (panel->panel_initialized && !mi->doze && !mi->lhbm_nits &&
+	    !mi->hbm_active)
+		dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_DIMMINGON);
+	mutex_unlock(&panel->panel_lock);
+}
+
+static void dsi_panel_mi_queue_dimming(struct dsi_panel *panel)
+{
+	struct dsi_panel_mi *mi = &panel->mi;
+
+	if (!panel->cur_mode || !panel->cur_mode->priv_info ||
+	    !panel->cur_mode->priv_info->cmd_sets[DSI_CMD_SET_MI_DIMMINGON].count)
+		return;
+
+	mod_delayed_work(system_wq, &mi->dimming_work,
+			msecs_to_jiffies(mi->dimming_delay_ms));
+}
+
 void dsi_panel_mi_parse(struct dsi_panel *panel)
 {
 	struct dsi_parser_utils *utils = &panel->utils;
@@ -171,6 +197,9 @@ void dsi_panel_mi_parse(struct dsi_panel *panel)
 	utils->read_u32_array(utils->data, "mi,batch-doze-lbm-reg53",
 			mi->batch_doze_lbm, ARRAY_SIZE(mi->batch_doze_lbm));
 	utils->read_u32(utils->data, "mi,doze-cmd-fps", &mi->doze_cmd_fps);
+	utils->read_u32(utils->data, "mi,panel-on-dimming-delay",
+			&mi->dimming_delay_ms);
+	INIT_DELAYED_WORK(&mi->dimming_work, dsi_panel_mi_dimming_work);
 	utils->read_u32_array(utils->data, "mi,doze-fallback-dbv",
 			mi->doze_fallback_dbv, ARRAY_SIZE(mi->doze_fallback_dbv));
 
@@ -283,6 +312,10 @@ bool dsi_panel_mi_set_backlight(struct dsi_panel *panel, u32 *bl_lvl)
 		return true;
 	}
 
+	if (*bl_lvl && !mi->bl_on)
+		dsi_panel_mi_queue_dimming(panel);
+	mi->bl_on = *bl_lvl;
+
 	if (mi->dbv_skip[0] && *bl_lvl >= mi->dbv_skip[0] &&
 	    *bl_lvl <= mi->dbv_skip[1])
 		*bl_lvl = mi->dbv_skip[0] - 1;
@@ -340,6 +373,7 @@ void dsi_panel_mi_reset_state(struct dsi_panel *panel)
 	panel->mi.lhbm_nits = 0;
 	panel->mi.bl_sync = false;
 	panel->mi.gamma_updated = false;
+	panel->mi.bl_on = false;
 	if (panel->cur_mode)
 		panel->mi.last_fps = panel->cur_mode->timing.refresh_rate;
 }
@@ -420,6 +454,8 @@ int dsi_panel_mi_set_doze(struct dsi_panel *panel, bool doze)
 	if (rc)
 		DSI_ERR("[%s] failed to set doze mode %d, rc=%d\n",
 				panel->name, target, rc);
+	else if (target == DSI_PANEL_MI_DOZE_OFF)
+		dsi_panel_mi_queue_dimming(panel);
 
 	mi->doze_active = target;
 
@@ -547,8 +583,13 @@ static int dsi_panel_mi_lhbm_off(struct dsi_panel *panel)
 			MIPI_DCS_SET_DISPLAY_BRIGHTNESS,
 			dsi_panel_mi_normal_dbv(panel));
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_LHBM_OFF_TO_NORMAL);
-	if (rc || !mi->hbm_reg53)
+	if (rc)
 		return rc;
+
+	if (!mi->hbm_reg53) {
+		dsi_panel_mi_queue_dimming(panel);
+		return 0;
+	}
 
 	/* Restore DDIC dimming, which local HBM turned off */
 	return dsi_panel_mi_tx_with_dbv(panel, DSI_CMD_SET_MI_HBM_OFF,
@@ -652,4 +693,9 @@ void dsi_panel_mi_read_batch(struct dsi_panel *panel)
 		DSI_INFO("[%s] panel batch 0x%02x\n", panel->name, batch);
 	}
 	dsi->mode_flags = mode_flags;
+}
+
+void dsi_panel_mi_deinit(struct dsi_panel *panel)
+{
+	cancel_delayed_work_sync(&panel->mi.dimming_work);
 }

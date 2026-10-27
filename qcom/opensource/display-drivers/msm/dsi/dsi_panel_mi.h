@@ -7,6 +7,7 @@
 #define _DSI_PANEL_MI_H_
 
 #include <linux/types.h>
+#include <linux/workqueue.h>
 
 #include "dsi_defs.h"
 
@@ -60,6 +61,10 @@ enum dsi_panel_mi_doze {
  * @batch:        Panel batch (register 0xDA), -1 if not read yet.
  * @doze_cmd_fps: Refresh rate the doze commands are made for, 0 for any.
  * @doze_fallback_dbv: HBM and LBM doze DBVs written at other refresh rates.
+ * @dimming_delay_ms: Delay until DDIC dimming is enabled after the panel
+ *                turned on or local HBM turned off.
+ * @dimming_work: Enables DDIC dimming.
+ * @bl_on:        Backlight was turned on since the panel was enabled.
  */
 struct dsi_panel_mi {
 	bool hbm_reg53;
@@ -107,9 +112,15 @@ struct dsi_panel_mi {
 
 	u32 doze_cmd_fps;
 	u32 doze_fallback_dbv[2];
+
+	u32 dimming_delay_ms;
+	struct delayed_work dimming_work;
+	bool bl_on;
 };
 
 void dsi_panel_mi_parse(struct dsi_panel *panel);
+
+void dsi_panel_mi_deinit(struct dsi_panel *panel);
 
 void dsi_panel_mi_parse_cmd_update(struct dsi_panel_cmd_set *set,
 		const char *name, struct dsi_parser_utils *utils);

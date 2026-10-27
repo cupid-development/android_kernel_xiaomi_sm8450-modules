@@ -4371,6 +4371,7 @@ static int dsi_display_res_deinit(struct dsi_display *display)
 
 	if (display->panel) {
 		dsi_display_mi_deinit(display);
+		dsi_panel_mi_deinit(display->panel);
 		dsi_panel_put(display->panel);
 	}
 
