@@ -52,6 +52,7 @@ enum dsi_panel_mi_doze {
  *                after resetting the panel while powering off.
  * @last_fps:     Refresh rate before the current timing switch.
  * @gamma_updated: Gamma was updated after the first timing switch.
+ * @switch_wait_vblank: Wait for a vblank after timing switches.
  */
 struct dsi_panel_mi {
 	bool hbm_reg53;
@@ -88,6 +89,8 @@ struct dsi_panel_mi {
 
 	u32 last_fps;
 	bool gamma_updated;
+
+	bool switch_wait_vblank;
 };
 
 void dsi_panel_mi_parse(struct dsi_panel *panel);

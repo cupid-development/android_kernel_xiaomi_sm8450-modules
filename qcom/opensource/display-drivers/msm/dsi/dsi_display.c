@@ -11,6 +11,7 @@
 
 #include "msm_drv.h"
 #include "sde_connector.h"
+#include "sde_encoder.h"
 #include "msm_mmu.h"
 #include "dsi_display.h"
 #include "dsi_panel.h"
@@ -8678,6 +8679,11 @@ int dsi_display_enable(struct dsi_display *display)
 		if (rc)
 			DSI_ERR("[%s] failed to switch DSI panel mode, rc=%d\n",
 				   display->name, rc);
+
+		if (display->panel->mi.switch_wait_vblank && display->drm_conn)
+			sde_encoder_wait_for_event(
+				to_sde_connector(display->drm_conn)->encoder,
+				MSM_ENC_VBLANK);
 
 		goto error;
 	}
