@@ -11,6 +11,8 @@
 #include "dsi_defs.h"
 
 struct dsi_panel;
+struct dsi_panel_cmd_set;
+struct dsi_parser_utils;
 
 enum dsi_panel_mi_doze {
 	DSI_PANEL_MI_DOZE_OFF,
@@ -41,6 +43,9 @@ struct dsi_panel_mi {
 };
 
 void dsi_panel_mi_parse(struct dsi_panel *panel);
+
+void dsi_panel_mi_parse_cmd_update(struct dsi_panel_cmd_set *set,
+		const char *name, struct dsi_parser_utils *utils);
 
 int dsi_panel_mi_update_cmd_set(struct dsi_panel *panel,
 		enum dsi_cmd_set_type type, u8 reg, const u8 *val, size_t len);

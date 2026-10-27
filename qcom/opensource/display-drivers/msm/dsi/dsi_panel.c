@@ -2147,6 +2147,8 @@ static int dsi_panel_parse_cmd_sets_sub(struct dsi_panel_cmd_set *cmd,
 		goto error_free_mem;
 	}
 
+	dsi_panel_mi_parse_cmd_update(cmd, cmd_set_prop_map[type], utils);
+
 	return rc;
 error_free_mem:
 	kfree(cmd->cmds);
@@ -4100,6 +4102,7 @@ void dsi_panel_put_mode(struct dsi_display_mode *mode)
 	for (i = 0; i < DSI_CMD_SET_MAX; i++) {
 		dsi_panel_destroy_cmd_packets(&mode->priv_info->cmd_sets[i]);
 		dsi_panel_dealloc_cmd_packets(&mode->priv_info->cmd_sets[i]);
+		kfree(mode->priv_info->cmd_sets[i].updates);
 	}
 
 	kfree(mode->priv_info);

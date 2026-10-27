@@ -384,12 +384,26 @@ struct dsi_cmd_desc {
 };
 
 /**
+ * struct dsi_cmd_update - location of a runtime updated command parameter
+ * @reg:    Register of the command.
+ * @index:  Index of the command in the command set.
+ * @len:    Length of the parameter.
+ */
+struct dsi_cmd_update {
+	u32 reg;
+	u32 index;
+	u32 len;
+};
+
+/**
  * struct dsi_panel_cmd_set - command set of the panel
  * @type:      type of the command
  * @state:     state of the command
  * @count:     number of cmds
  * @ctrl_idx:  index of the dsi control
  * @cmds:      arry of cmds
+ * @updates:   parameters updated at runtime
+ * @update_count: number of @updates
  */
 struct dsi_panel_cmd_set {
 	enum dsi_cmd_set_type type;
@@ -397,6 +411,8 @@ struct dsi_panel_cmd_set {
 	u32 count;
 	u32 ctrl_idx;
 	struct dsi_cmd_desc *cmds;
+	struct dsi_cmd_update *updates;
+	u32 update_count;
 };
 
 /**

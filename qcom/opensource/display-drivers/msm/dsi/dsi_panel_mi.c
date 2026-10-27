@@ -3,6 +3,7 @@
  * Copyright (C) 2026 The LineageOS Project
  */
 
+#include <linux/slab.h>
 #include <video/mipi_display.h>
 
 #include "dsi_panel.h"
@@ -25,29 +26,71 @@ void dsi_panel_mi_parse(struct dsi_panel *panel)
 		mi->doze_hbm_threshold = 100;
 }
 
+void dsi_panel_mi_parse_cmd_update(struct dsi_panel_cmd_set *set,
+		const char *name, struct dsi_parser_utils *utils)
+{
+	char prop[64];
+	u32 *arr;
+	int count, i;
+
+	snprintf(prop, sizeof(prop), "%s-update", name);
+	count = utils->count_u32_elems(utils->data, prop);
+	if (count <= 0 || count % 3)
+		return;
+
+	arr = kcalloc(count, sizeof(*arr), GFP_KERNEL);
+	if (!arr)
+		return;
+
+	if (utils->read_u32_array(utils->data, prop, arr, count))
+		goto exit;
+
+	set->updates = kcalloc(count / 3, sizeof(*set->updates), GFP_KERNEL);
+	if (!set->updates)
+		goto exit;
+
+	for (i = 0; i < count / 3; i++) {
+		set->updates[i].reg = arr[i * 3];
+		set->updates[i].index = arr[i * 3 + 1];
+		set->updates[i].len = arr[i * 3 + 2];
+	}
+	set->update_count = count / 3;
+exit:
+	kfree(arr);
+}
+
 int dsi_panel_mi_update_cmd_set(struct dsi_panel *panel,
 		enum dsi_cmd_set_type type, u8 reg, const u8 *val, size_t len)
 {
 	struct dsi_panel_cmd_set *set;
+	struct dsi_cmd_update *update;
 	struct dsi_cmd_desc *cmd;
 	u8 *payload;
-	int i;
+	int i, rc = -ENOENT;
 
 	if (!panel->cur_mode || !panel->cur_mode->priv_info)
 		return -EINVAL;
 
 	set = &panel->cur_mode->priv_info->cmd_sets[type];
-	for (i = 0; i < set->count; i++) {
-		cmd = &set->cmds[i];
-		payload = (u8 *)cmd->msg.tx_buf;
-		if (cmd->msg.tx_len != len + 1 || payload[0] != reg)
+	for (i = 0; i < set->update_count; i++) {
+		update = &set->updates[i];
+		if (update->reg != reg || update->len != len ||
+		    update->index >= set->count)
 			continue;
 
+		cmd = &set->cmds[update->index];
+		payload = (u8 *)cmd->msg.tx_buf;
+		if (cmd->msg.tx_len < len + 1 || payload[0] != reg) {
+			DSI_ERR("[%s] invalid update of 0x%02x in set %d\n",
+					panel->name, reg, type);
+			continue;
+		}
+
 		memcpy(&payload[1], val, len);
-		return 0;
+		rc = 0;
 	}
 
-	return -ENOENT;
+	return rc;
 }
 
 static int dsi_panel_mi_tx_with_dbv(struct dsi_panel *panel,
