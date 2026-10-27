@@ -45,6 +45,7 @@ enum dsi_panel_mi_doze {
  * @esd_irq_flags: Trigger flags of @esd_irq.
  * @esd_irq_enabled: @esd_irq is enabled.
  * @esd_ignore_in_doze: Ignore panel errors while in doze.
+ * @dbv_skip:     Range of DBVs the panel can't display, mapped to the DBV below.
  */
 struct dsi_panel_mi {
 	bool hbm_reg53;
@@ -72,6 +73,8 @@ struct dsi_panel_mi {
 	u32 esd_irq_flags;
 	bool esd_irq_enabled;
 	bool esd_ignore_in_doze;
+
+	u32 dbv_skip[2];
 };
 
 void dsi_panel_mi_parse(struct dsi_panel *panel);

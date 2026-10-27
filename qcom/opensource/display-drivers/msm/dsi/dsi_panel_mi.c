@@ -102,6 +102,9 @@ void dsi_panel_mi_parse(struct dsi_panel *panel)
 	else
 		mi->doze_hbm_threshold = 100;
 
+	utils->read_u32_array(utils->data, "mi,dbv-skip-range", mi->dbv_skip,
+			ARRAY_SIZE(mi->dbv_skip));
+
 	dsi_panel_mi_parse_lhbm(panel);
 	dsi_panel_mi_parse_esd(panel);
 }
@@ -210,6 +213,10 @@ bool dsi_panel_mi_set_backlight(struct dsi_panel *panel, u32 *bl_lvl)
 			dsi_panel_mi_set_doze(panel, true);
 		return true;
 	}
+
+	if (mi->dbv_skip[0] && *bl_lvl >= mi->dbv_skip[0] &&
+	    *bl_lvl <= mi->dbv_skip[1])
+		*bl_lvl = mi->dbv_skip[0] - 1;
 
 	if (!mi->hbm_reg53)
 		return false;
