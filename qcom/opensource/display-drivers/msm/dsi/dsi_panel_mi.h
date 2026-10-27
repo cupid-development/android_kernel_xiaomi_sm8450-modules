@@ -46,6 +46,8 @@ enum dsi_panel_mi_doze {
  * @esd_irq_enabled: @esd_irq is enabled.
  * @esd_ignore_in_doze: Ignore panel errors while in doze.
  * @dbv_skip:     Range of DBVs the panel can't display, mapped to the DBV below.
+ * @bl_sync_threshold: DBVs above this need the BL sync commands, 0 if unused.
+ * @bl_sync:      BL sync is enabled.
  */
 struct dsi_panel_mi {
 	bool hbm_reg53;
@@ -75,6 +77,8 @@ struct dsi_panel_mi {
 	bool esd_ignore_in_doze;
 
 	u32 dbv_skip[2];
+	u32 bl_sync_threshold;
+	bool bl_sync;
 };
 
 void dsi_panel_mi_parse(struct dsi_panel *panel);

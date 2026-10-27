@@ -104,6 +104,8 @@ void dsi_panel_mi_parse(struct dsi_panel *panel)
 
 	utils->read_u32_array(utils->data, "mi,dbv-skip-range", mi->dbv_skip,
 			ARRAY_SIZE(mi->dbv_skip));
+	utils->read_u32(utils->data, "mi,bl-sync-threshold",
+			&mi->bl_sync_threshold);
 
 	dsi_panel_mi_parse_lhbm(panel);
 	dsi_panel_mi_parse_esd(panel);
@@ -218,6 +220,14 @@ bool dsi_panel_mi_set_backlight(struct dsi_panel *panel, u32 *bl_lvl)
 	    *bl_lvl <= mi->dbv_skip[1])
 		*bl_lvl = mi->dbv_skip[0] - 1;
 
+	if (mi->bl_sync_threshold &&
+	    (*bl_lvl > mi->bl_sync_threshold) != mi->bl_sync) {
+		mi->bl_sync = !mi->bl_sync;
+		dsi_panel_tx_cmd_set(panel, mi->bl_sync ?
+				DSI_CMD_SET_MI_BL_SYNC_ON :
+				DSI_CMD_SET_MI_BL_SYNC_OFF);
+	}
+
 	if (!mi->hbm_reg53)
 		return false;
 
@@ -261,6 +271,7 @@ void dsi_panel_mi_reset_state(struct dsi_panel *panel)
 	panel->mi.doze = false;
 	panel->mi.doze_active = DSI_PANEL_MI_DOZE_OFF;
 	panel->mi.lhbm_nits = 0;
+	panel->mi.bl_sync = false;
 }
 
 bool dsi_panel_mi_has_doze(struct dsi_panel *panel)
