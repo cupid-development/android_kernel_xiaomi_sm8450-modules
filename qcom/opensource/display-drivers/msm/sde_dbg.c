@@ -634,7 +634,7 @@ static struct notifier_block sde_md_notify_blk = {
 	.priority = INT_MAX,
 };
 
-static int sde_register_md_panic_notifer(void)
+static int sde_register_md_panic_notifer()
 {
 	qcom_va_md_register("display", &sde_md_notify_blk);
 	return 0;
@@ -657,7 +657,7 @@ void sde_mini_dump_add_va_region(const char *name, u32 size, void *virt_addr)
 	return;
 }
 #else
-static int sde_register_md_panic_notifer(void)
+static int sde_register_md_panic_notifer()
 {
 	return 0;
 }
