@@ -931,6 +931,7 @@ struct dsi_ctrl_hw_ops {
  * @widebus_support:        48 bit wide data bus is supported.
  * @reset_trig_ctrl:		Boolean to indicate if trigger control needs to
  *				be reset to default.
+ * @long_hs_timer:          Allow up to 40ms of HS transmission time.
  */
 struct dsi_ctrl_hw {
 	void __iomem *base;
@@ -954,6 +955,7 @@ struct dsi_ctrl_hw {
 	bool null_insertion_enabled;
 	bool widebus_support;
 	bool reset_trig_ctrl;
+	bool long_hs_timer;
 };
 
 #endif /* _DSI_CTRL_HW_H_ */

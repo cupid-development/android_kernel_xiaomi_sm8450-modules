@@ -2072,6 +2072,9 @@ static int dsi_ctrl_dts_parse(struct dsi_ctrl *dsi_ctrl,
 	dsi_ctrl->split_link_supported = of_property_read_bool(of_node,
 					"qcom,split-link-supported");
 
+	dsi_ctrl->long_hs_timer = of_property_read_bool(of_node,
+					"mi,support-max-hs-timer");
+
 	rc = of_property_read_u32(of_node, "frame-threshold-time-us",
 			&frame_threshold_time_us);
 	if (rc) {
@@ -2151,6 +2154,7 @@ static int dsi_ctrl_dev_probe(struct platform_device *pdev)
 		       dsi_ctrl->version);
 		goto fail_clks;
 	}
+	dsi_ctrl->hw.long_hs_timer = dsi_ctrl->long_hs_timer;
 
 	item->ctrl = dsi_ctrl;
 	sde_dbg_dsi_ctrl_register(dsi_ctrl->hw.base, dsi_ctrl->name);
