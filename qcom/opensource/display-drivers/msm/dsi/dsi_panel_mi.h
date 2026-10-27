@@ -56,6 +56,8 @@ enum dsi_panel_mi_doze {
  * @gamma_updated: Gamma was updated after the first timing switch.
  * @switch_wait_vblank: Wait for a vblank after timing switches.
  * @post_unprepare_delay_ms: Delay before powering off the panel.
+ * @batch_doze_lbm: Batches below [0] need 0x53 set to [1] in doze LBM.
+ * @batch:        Panel batch (register 0xDA), -1 if not read yet.
  */
 struct dsi_panel_mi {
 	bool hbm_reg53;
@@ -97,6 +99,9 @@ struct dsi_panel_mi {
 
 	bool switch_wait_vblank;
 	u32 post_unprepare_delay_ms;
+
+	u32 batch_doze_lbm[2];
+	int batch;
 };
 
 void dsi_panel_mi_parse(struct dsi_panel *panel);
@@ -124,5 +129,7 @@ void dsi_panel_mi_esd_irq_ctrl(struct dsi_panel *panel, bool enable);
 enum dsi_cmd_set_type dsi_panel_mi_timing_switch_type(struct dsi_panel *panel);
 
 void dsi_panel_mi_post_timing_switch(struct dsi_panel *panel);
+
+void dsi_panel_mi_read_batch(struct dsi_panel *panel);
 
 #endif /* _DSI_PANEL_MI_H_ */

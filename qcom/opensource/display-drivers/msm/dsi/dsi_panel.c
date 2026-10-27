@@ -4981,6 +4981,8 @@ int dsi_panel_post_enable(struct dsi_panel *panel)
 		       panel->name, rc);
 		goto error;
 	}
+
+	dsi_panel_mi_read_batch(panel);
 error:
 	mutex_unlock(&panel->panel_lock);
 	return rc;

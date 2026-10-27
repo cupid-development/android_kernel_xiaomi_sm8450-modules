@@ -167,6 +167,9 @@ void dsi_panel_mi_parse(struct dsi_panel *panel)
 			&mi->post_unprepare_delay_ms);
 	mi->switch_wait_vblank = utils->read_bool(utils->data,
 			"mi,timing-switch-wait-vblank");
+	mi->batch = -1;
+	utils->read_u32_array(utils->data, "mi,batch-doze-lbm-reg53",
+			mi->batch_doze_lbm, ARRAY_SIZE(mi->batch_doze_lbm));
 
 	dsi_panel_mi_parse_lhbm(panel);
 	dsi_panel_mi_parse_esd(panel);
@@ -377,6 +380,11 @@ int dsi_panel_mi_set_doze(struct dsi_panel *panel, bool doze)
 		break;
 	case DSI_PANEL_MI_DOZE_LBM:
 		type = DSI_CMD_SET_MI_DOZE_LBM;
+		if (mi->batch >= 0 && mi->batch < mi->batch_doze_lbm[0]) {
+			u8 val = mi->batch_doze_lbm[1];
+
+			dsi_panel_mi_update_cmd_set(panel, type, 0x53, &val, 1);
+		}
 		break;
 	default:
 		type = DSI_CMD_SET_NOLP;
@@ -605,4 +613,22 @@ void dsi_panel_mi_post_timing_switch(struct dsi_panel *panel)
 		DSI_ERR("[%s] failed to update gamma\n", panel->name);
 	else
 		mi->gamma_updated = true;
+}
+
+void dsi_panel_mi_read_batch(struct dsi_panel *panel)
+{
+	struct dsi_panel_mi *mi = &panel->mi;
+	struct mipi_dsi_device *dsi = &panel->mipi_device;
+	unsigned long mode_flags = dsi->mode_flags;
+	u8 batch;
+
+	if (!mi->batch_doze_lbm[0] || mi->batch >= 0)
+		return;
+
+	dsi->mode_flags |= MIPI_DSI_MODE_LPM;
+	if (mipi_dsi_dcs_read(dsi, 0xda, &batch, 1) == 1) {
+		mi->batch = batch;
+		DSI_INFO("[%s] panel batch 0x%02x\n", panel->name, batch);
+	}
+	dsi->mode_flags = mode_flags;
 }
