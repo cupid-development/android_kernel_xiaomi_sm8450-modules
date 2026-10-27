@@ -43,6 +43,8 @@
 #include "sde_hw_qdss.h"
 #include "sde_encoder_dce.h"
 #include "sde_vm.h"
+#include "dsi_display.h"
+#include "dsi_drm.h"
 
 #define SDE_DEBUG_ENC(e, fmt, ...) SDE_DEBUG("enc%d " fmt,\
 		(e) ? (e)->base.base.id : -1, ##__VA_ARGS__)
@@ -4558,6 +4560,64 @@ end:
 	return ret;
 }
 
+/* Waits until the video mode timing engine is in the active region */
+static void _sde_encoder_vid_wait_for_active(struct sde_encoder_virt *sde_enc)
+{
+	struct sde_encoder_phys *phys;
+	struct drm_display_mode *mode;
+	u32 ln_cnt, min_ln_cnt, active_mark_region;
+	int i, retry = 150;
+
+	for (i = 0; i < sde_enc->num_phys_encs; i++) {
+		phys = sde_enc->phys_encs[i];
+		if (!phys || !phys->ops.get_line_count ||
+		    (phys->ops.is_master && !phys->ops.is_master(phys)))
+			continue;
+
+		mode = &phys->cached_mode;
+		min_ln_cnt = (mode->vtotal - mode->vsync_start) +
+			(mode->vsync_end - mode->vsync_start);
+		active_mark_region = mode->vdisplay + min_ln_cnt -
+			mode->vdisplay / 4;
+
+		while (retry--) {
+			ln_cnt = phys->ops.get_line_count(phys);
+			if (ln_cnt > min_ln_cnt && ln_cnt < active_mark_region)
+				return;
+			udelay(200);
+		}
+	}
+}
+
+/* Xiaomi video mode panels need a gamma update matching the new refresh rate */
+static void _sde_encoder_mi_fps_gamma(struct sde_encoder_virt *sde_enc)
+{
+	struct drm_bridge *bridge;
+	struct dsi_bridge *c_bridge;
+	struct dsi_panel *panel;
+
+	if (sde_enc->disp_info.intf_type != DRM_MODE_CONNECTOR_DSI ||
+	    !sde_encoder_check_curr_mode(&sde_enc->base, MSM_DISPLAY_VIDEO_MODE))
+		return;
+
+	bridge = drm_bridge_chain_get_first_bridge(&sde_enc->base);
+	if (!bridge)
+		return;
+
+	c_bridge = container_of(bridge, struct dsi_bridge, base);
+	if (!c_bridge->display || !c_bridge->display->panel ||
+	    !(c_bridge->dsi_mode.dsi_mode_flags & DSI_MODE_FLAG_VRR))
+		return;
+
+	panel = c_bridge->display->panel;
+	mutex_lock(&panel->panel_lock);
+	if (dsi_panel_mi_has_fps_gamma(panel)) {
+		_sde_encoder_vid_wait_for_active(sde_enc);
+		dsi_panel_mi_fps_gamma(panel);
+	}
+	mutex_unlock(&panel->panel_lock);
+}
+
 void sde_encoder_kickoff(struct drm_encoder *drm_enc, bool config_changed)
 {
 	struct sde_encoder_virt *sde_enc;
@@ -4585,6 +4645,8 @@ void sde_encoder_kickoff(struct drm_encoder *drm_enc, bool config_changed)
 
 		SDE_EVT32(DRMID(drm_enc), i, SDE_EVTLOG_FUNC_CASE1);
 	}
+
+	_sde_encoder_mi_fps_gamma(sde_enc);
 
 	/* All phys encs are ready to go, trigger the kickoff */
 	_sde_encoder_kickoff_phys(sde_enc, config_changed);

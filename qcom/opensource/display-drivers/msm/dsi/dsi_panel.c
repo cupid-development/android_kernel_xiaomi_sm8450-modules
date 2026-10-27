@@ -1971,6 +1971,9 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"mi,mdss-dsi-exit-90fps-timing-switch-command",
 	"mi,mdss-dsi-auto-update-gamma-command",
 	"mi,mdss-dsi-dimmingon-command",
+	"mi,mdss-dsi-fps-60-gamma-command",
+	"mi,mdss-dsi-fps-90-gamma-command",
+	"mi,mdss-dsi-fps-120-gamma-command",
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -2016,6 +2019,9 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"mi,mdss-dsi-exit-90fps-timing-switch-command-state",
 	"mi,mdss-dsi-auto-update-gamma-command-state",
 	"mi,mdss-dsi-dimmingon-command-state",
+	"mi,mdss-dsi-fps-60-gamma-command-state",
+	"mi,mdss-dsi-fps-90-gamma-command-state",
+	"mi,mdss-dsi-fps-120-gamma-command-state",
 };
 
 int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
@@ -4986,6 +4992,7 @@ int dsi_panel_post_enable(struct dsi_panel *panel)
 	}
 
 	dsi_panel_mi_read_batch(panel);
+	dsi_panel_mi_fps_gamma(panel);
 error:
 	mutex_unlock(&panel->panel_lock);
 	return rc;

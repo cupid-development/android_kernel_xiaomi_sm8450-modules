@@ -163,4 +163,8 @@ void dsi_panel_mi_read_batch(struct dsi_panel *panel);
 
 void dsi_panel_mi_update_on_cmds(struct dsi_panel *panel);
 
+bool dsi_panel_mi_has_fps_gamma(struct dsi_panel *panel);
+
+void dsi_panel_mi_fps_gamma(struct dsi_panel *panel);
+
 #endif /* _DSI_PANEL_MI_H_ */
