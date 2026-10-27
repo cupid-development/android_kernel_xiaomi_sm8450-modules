@@ -2765,6 +2765,67 @@ static void _sde_connector_report_panel_dead(struct sde_connector *conn,
 			conn->base.base.id, conn->encoder->base.id);
 }
 
+static irqreturn_t sde_connector_esd_err_irq(int irq, void *data)
+{
+	struct sde_connector *c_conn = data;
+	struct dsi_display *display = c_conn->display;
+	struct dsi_panel *panel = display->panel;
+	struct drm_event event;
+	int power_mode;
+
+	mutex_lock(&panel->panel_lock);
+	dsi_panel_mi_esd_irq_ctrl(panel, false);
+	power_mode = panel->power_mode;
+	if (!dsi_panel_initialized(panel) || c_conn->panel_dead ||
+	    (panel->mi.esd_ignore_in_doze &&
+	     (power_mode == SDE_MODE_DPMS_LP1 ||
+	      power_mode == SDE_MODE_DPMS_LP2))) {
+		mutex_unlock(&panel->panel_lock);
+		return IRQ_HANDLED;
+	}
+	mutex_unlock(&panel->panel_lock);
+
+	SDE_ERROR("%s panel error flag raised\n", display->display_type);
+
+	if (power_mode == SDE_MODE_DPMS_ON || power_mode == SDE_MODE_DPMS_LP1) {
+		_sde_connector_report_panel_dead(c_conn, false);
+	} else {
+		/* No frames are sent in LP2, notify userspace only */
+		c_conn->panel_dead = true;
+		event.type = DRM_EVENT_PANEL_DEAD;
+		event.length = sizeof(bool);
+		msm_mode_object_event_notify(&c_conn->base.base,
+			c_conn->base.dev, &event, (u8 *)&c_conn->panel_dead);
+	}
+
+	return IRQ_HANDLED;
+}
+
+static void sde_connector_register_esd_irq(struct sde_connector *c_conn)
+{
+	struct dsi_display *display = c_conn->display;
+	struct dsi_panel *panel;
+	int rc;
+
+	if (c_conn->connector_type != DRM_MODE_CONNECTOR_DSI || !display ||
+	    !display->panel)
+		return;
+
+	panel = display->panel;
+	if (!panel->mi.esd_irq)
+		return;
+
+	irq_set_status_flags(panel->mi.esd_irq, IRQ_NOAUTOEN);
+	rc = devm_request_threaded_irq(c_conn->base.dev->dev, panel->mi.esd_irq,
+			NULL, sde_connector_esd_err_irq,
+			panel->mi.esd_irq_flags | IRQF_ONESHOT,
+			"esd_err_irq", c_conn);
+	if (rc) {
+		SDE_ERROR("failed to request esd irq, rc=%d\n", rc);
+		panel->mi.esd_irq = 0;
+	}
+}
+
 const char *sde_conn_get_topology_name(struct drm_connector *conn,
 		struct msm_display_topology topology)
 {
@@ -3394,6 +3455,8 @@ struct drm_connector *sde_connector_init(struct drm_device *dev,
 
 	INIT_DELAYED_WORK(&c_conn->status_work,
 			sde_connector_check_status_work);
+
+	sde_connector_register_esd_irq(c_conn);
 
 	return &c_conn->base;
 

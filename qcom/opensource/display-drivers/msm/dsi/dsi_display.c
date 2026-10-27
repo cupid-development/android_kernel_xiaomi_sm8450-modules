@@ -8738,6 +8738,9 @@ int dsi_display_post_enable(struct dsi_display *display)
 				display->name, rc);
 	}
 
+	dsi_panel_acquire_panel_lock(display->panel);
+	dsi_panel_mi_esd_irq_ctrl(display->panel, true);
+	dsi_panel_release_panel_lock(display->panel);
 	dsi_display_mi_set_allowed(display, true);
 
 	/* remove the clk vote for CMD mode panels */
@@ -8759,6 +8762,9 @@ int dsi_display_pre_disable(struct dsi_display *display)
 	}
 
 	dsi_display_mi_set_allowed(display, false);
+	dsi_panel_acquire_panel_lock(display->panel);
+	dsi_panel_mi_esd_irq_ctrl(display->panel, false);
+	dsi_panel_release_panel_lock(display->panel);
 
 	mutex_lock(&display->display_lock);
 
