@@ -73,6 +73,7 @@ enum dsi_panel_mi_doze {
  * @vdc_update:   <register index length> triples of the panel on commands
  *                receiving @vdc_param in order.
  * @vdc_update_count: Number of u32 in @vdc_update.
+ * @underflow_black: Show black instead of blue on video mode underflows.
  * @dfps_vfp:     <fps vfp> pairs overriding the dynamic fps front porches.
  * @dfps_vfp_count: Number of u32 in @dfps_vfp.
  */
@@ -133,6 +134,7 @@ struct dsi_panel_mi {
 	u32 vdc_update[6];
 	int vdc_update_count;
 
+	bool underflow_black;
 	u32 dfps_vfp[8];
 	int dfps_vfp_count;
 };

@@ -103,6 +103,15 @@ static void drm_mode_to_intf_timing_params(
 	timing->vsync_polarity = (mode->flags & DRM_MODE_FLAG_NVSYNC) ? 1 : 0;
 	timing->border_clr = 0;
 	timing->underflow_clr = 0xff;
+	if (phys_enc->connector &&
+	    to_sde_connector(phys_enc->connector)->connector_type ==
+			DRM_MODE_CONNECTOR_DSI) {
+		struct dsi_display *display =
+			to_sde_connector(phys_enc->connector)->display;
+
+		if (display && display->panel && display->panel->mi.underflow_black)
+			timing->underflow_clr = 0;
+	}
 	timing->hsync_skew = mode->hskew;
 	timing->v_front_porch_fixed = vid_enc->base.vfp_cached;
 	timing->vrefresh = drm_mode_vrefresh(mode);

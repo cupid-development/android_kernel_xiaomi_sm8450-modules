@@ -236,6 +236,8 @@ void dsi_panel_mi_parse(struct dsi_panel *panel)
 	dsi_panel_mi_parse_esd(panel);
 	dsi_panel_mi_parse_vdc(panel);
 
+	mi->underflow_black = utils->read_bool(utils->data,
+			"mi,underflow-color-black");
 	mi->dfps_vfp_count = utils->count_u32_elems(utils->data, "mi,dfps-vfp");
 	if (mi->dfps_vfp_count <= 0 || mi->dfps_vfp_count % 2 ||
 	    mi->dfps_vfp_count > ARRAY_SIZE(mi->dfps_vfp) ||
