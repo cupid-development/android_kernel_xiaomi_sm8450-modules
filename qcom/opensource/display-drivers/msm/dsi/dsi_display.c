@@ -6136,6 +6136,9 @@ int dsi_display_dev_probe(struct platform_device *pdev)
 
 	return 0;
 end:
+	if (display && display->post_cmd_tx_workq)
+		destroy_workqueue(display->post_cmd_tx_workq);
+
 	if (display)
 		devm_kfree(&pdev->dev, display);
 
