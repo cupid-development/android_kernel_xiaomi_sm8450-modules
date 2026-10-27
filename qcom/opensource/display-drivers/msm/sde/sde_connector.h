@@ -506,6 +506,8 @@ struct sde_connector_dyn_hdr_metadata {
  * @cdev: backlight cooling device interface
  * @n: backlight cooling device notifier
  * @thermal_max_brightness: thermal max brightness cap
+ * @clone_cdev: cooling device scaling the max brightness in 1/200 steps
+ * @clone_state: current state of @clone_cdev
  * @status_work: work object to perform status checks
  * @esd_status_interval: variable to change ESD check interval in millisec
  * @expected_panel_mode: expected panel mode by usespace
@@ -573,6 +575,8 @@ struct sde_connector {
 	struct sde_cdev *cdev;
 	struct notifier_block n;
 	unsigned long thermal_max_brightness;
+	struct thermal_cooling_device *clone_cdev;
+	unsigned long clone_state;
 	struct delayed_work status_work;
 	u32 esd_status_interval;
 	bool panel_dead;

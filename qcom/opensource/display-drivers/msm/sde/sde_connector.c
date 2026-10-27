@@ -22,6 +22,7 @@
 #include <drm/drm_probe_helper.h>
 
 #define BL_NODE_NAME_SIZE 32
+#define SDE_CLONE_CDEV_MAX_STATE 200
 #define HDR10_PLUS_VSIF_TYPE_CODE      0x81
 
 /* Autorefresh will occur after FRAME_CNT frames. Large values are unlikely */
@@ -163,6 +164,10 @@ static int sde_backlight_device_update_status(struct backlight_device *bd)
 		brightness = display->panel->bl_config.brightness_max_level;
 	if (brightness > c_conn->thermal_max_brightness)
 		brightness = c_conn->thermal_max_brightness;
+	if (c_conn->clone_cdev)
+		brightness = min_t(int, brightness, mult_frac(
+				display->panel->bl_config.brightness_max_level,
+				c_conn->clone_state, SDE_CLONE_CDEV_MAX_STATE));
 
 	display->panel->bl_config.brightness = brightness;
 	/* map UI brightness into driver backlight level with rounding */
@@ -229,6 +234,68 @@ static int sde_backlight_cooling_cb(struct notifier_block *nb,
 	return 0;
 }
 
+static int sde_clone_cdev_get_max_state(struct thermal_cooling_device *cdev,
+					unsigned long *state)
+{
+	*state = SDE_CLONE_CDEV_MAX_STATE;
+
+	return 0;
+}
+
+static int sde_clone_cdev_get_cur_state(struct thermal_cooling_device *cdev,
+					unsigned long *state)
+{
+	struct sde_connector *c_conn = cdev->devdata;
+
+	*state = c_conn->clone_state;
+
+	return 0;
+}
+
+static int sde_clone_cdev_set_cur_state(struct thermal_cooling_device *cdev,
+					unsigned long state)
+{
+	struct sde_connector *c_conn = cdev->devdata;
+
+	if (!state || state > SDE_CLONE_CDEV_MAX_STATE)
+		return -EINVAL;
+
+	if (state == c_conn->clone_state)
+		return 0;
+
+	SDE_DEBUG("bl: clone cdev state:%lu\n", state);
+	c_conn->clone_state = state;
+	backlight_update_status(c_conn->bl_device);
+
+	return 0;
+}
+
+static const struct thermal_cooling_device_ops sde_clone_cdev_ops = {
+	.get_max_state = sde_clone_cdev_get_max_state,
+	.get_cur_state = sde_clone_cdev_get_cur_state,
+	.set_cur_state = sde_clone_cdev_set_cur_state,
+};
+
+/* Cooling device used by the Xiaomi thermal daemon */
+static void sde_clone_cdev_register(struct sde_connector *c_conn,
+					struct drm_device *dev, int index)
+{
+	char name[BL_NODE_NAME_SIZE];
+
+	if (!of_find_property(dev->dev->of_node, "#cooling-cells", NULL))
+		return;
+
+	snprintf(name, BL_NODE_NAME_SIZE, "brightness%u-clone", index);
+	c_conn->clone_state = SDE_CLONE_CDEV_MAX_STATE;
+	c_conn->clone_cdev = thermal_of_cooling_device_register(
+			dev->dev->of_node, name, c_conn, &sde_clone_cdev_ops);
+	if (IS_ERR(c_conn->clone_cdev)) {
+		SDE_INFO("Failed to register %s: %ld\n", name,
+				PTR_ERR(c_conn->clone_cdev));
+		c_conn->clone_cdev = NULL;
+	}
+}
+
 static int sde_backlight_setup(struct sde_connector *c_conn,
 					struct drm_device *dev)
 {
@@ -286,6 +353,8 @@ static int sde_backlight_setup(struct sde_connector *c_conn,
 				    PTR_ERR(c_conn->cdev));
 		c_conn->cdev = NULL;
 	}
+
+	sde_clone_cdev_register(c_conn, dev, display_count);
 done:
 	display_count++;
 
@@ -1234,6 +1303,8 @@ void sde_connector_destroy(struct drm_connector *connector)
 
 	if (c_conn->cdev)
 		backlight_cdev_unregister(c_conn->cdev);
+	if (c_conn->clone_cdev)
+		thermal_cooling_device_unregister(c_conn->clone_cdev);
 	if (c_conn->bl_device)
 		backlight_device_unregister(c_conn->bl_device);
 	drm_connector_unregister(connector);
