@@ -1950,6 +1950,10 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-qsync-off-commands",
 	"mi,mdss-dsi-hbm-on-command",
 	"mi,mdss-dsi-hbm-off-command",
+	"mi,mdss-dsi-doze-hbm-command",
+	"mi,mdss-dsi-doze-lbm-command",
+	"mi,mdss-dsi-doze-hbm-nolp-command",
+	"mi,mdss-dsi-doze-lbm-nolp-command",
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -1980,6 +1984,10 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-qsync-off-commands-state",
 	"mi,mdss-dsi-hbm-on-command-state",
 	"mi,mdss-dsi-hbm-off-command-state",
+	"mi,mdss-dsi-doze-hbm-command-state",
+	"mi,mdss-dsi-doze-lbm-command-state",
+	"mi,mdss-dsi-doze-hbm-nolp-command-state",
+	"mi,mdss-dsi-doze-lbm-nolp-command-state",
 };
 
 int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
@@ -4507,6 +4515,8 @@ int dsi_panel_set_lp1(struct dsi_panel *panel)
 	if (rc)
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_LP1 cmd, rc=%d\n",
 		       panel->name, rc);
+
+	rc = dsi_panel_mi_set_doze(panel, true);
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -4530,6 +4540,8 @@ int dsi_panel_set_lp2(struct dsi_panel *panel)
 	if (rc)
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_LP2 cmd, rc=%d\n",
 		       panel->name, rc);
+
+	rc = dsi_panel_mi_set_doze(panel, true);
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -4556,13 +4568,13 @@ int dsi_panel_set_nolp(struct dsi_panel *panel)
 	     panel->power_mode == SDE_MODE_DPMS_LP2))
 		dsi_pwr_panel_regulator_mode_set(&panel->power_info,
 			"ibb", REGULATOR_MODE_NORMAL);
-	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NOLP);
+	rc = dsi_panel_mi_set_doze(panel, false);
 	if (rc)
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_NOLP cmd, rc=%d\n",
 		       panel->name, rc);
 
 	dsi_panel_mi_reset_state(panel);
-	if (panel->mi.last_bl_lvl > panel->bl_config.bl_max_level / 2)
+	if (panel->mi.hbm_reg53 || dsi_panel_mi_has_doze(panel))
 		dsi_panel_update_backlight(panel, panel->mi.last_bl_lvl);
 exit:
 	mutex_unlock(&panel->panel_lock);
