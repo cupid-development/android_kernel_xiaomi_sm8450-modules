@@ -30,6 +30,17 @@ enum dsi_panel_mi_doze {
  * @doze_hbm_threshold: Doze backlight levels above this select doze HBM.
  * @doze:         Panel is in a low power mode.
  * @doze_active:  Doze brightness mode currently set on the panel.
+ * @doze_hbm_dbv: DBV set by the doze HBM commands.
+ * @doze_lbm_dbv: DBV set by the doze LBM commands.
+ * @lhbm:         Panel supports local HBM.
+ * @lhbm_ui_ready_frames: Frames until local HBM is visible after enabling it.
+ * @lhbm_alpha:   Local HBM alpha (register 0x87) per backlight level.
+ * @lhbm_alpha_size: Number of entries in @lhbm_alpha.
+ * @lhbm_alpha_max: Alpha for backlight levels beyond @lhbm_alpha.
+ * @lhbm_alpha_or: Bits always set in the alpha parameter.
+ * @lhbm_df_min:  Minimum of register 0xDF, which is 4 times the DBV.
+ * @lhbm_b2_min:  Minimum of register 0xB2, which is the DBV.
+ * @lhbm_nits:    Active local HBM brightness, 0 if off.
  */
 struct dsi_panel_mi {
 	bool hbm_reg53;
@@ -40,6 +51,18 @@ struct dsi_panel_mi {
 	u32 doze_hbm_threshold;
 	bool doze;
 	enum dsi_panel_mi_doze doze_active;
+	u32 doze_hbm_dbv;
+	u32 doze_lbm_dbv;
+
+	bool lhbm;
+	u32 lhbm_ui_ready_frames;
+	const u16 *lhbm_alpha;
+	u32 lhbm_alpha_size;
+	u32 lhbm_alpha_max;
+	u32 lhbm_alpha_or;
+	u32 lhbm_df_min;
+	u32 lhbm_b2_min;
+	u32 lhbm_nits;
 };
 
 void dsi_panel_mi_parse(struct dsi_panel *panel);
@@ -59,5 +82,7 @@ void dsi_panel_mi_reset_state(struct dsi_panel *panel);
 bool dsi_panel_mi_has_doze(struct dsi_panel *panel);
 
 int dsi_panel_mi_set_doze(struct dsi_panel *panel, bool doze);
+
+int dsi_panel_mi_set_lhbm(struct dsi_panel *panel, u32 nits);
 
 #endif /* _DSI_PANEL_MI_H_ */

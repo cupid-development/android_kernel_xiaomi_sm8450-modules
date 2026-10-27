@@ -20,6 +20,7 @@
 #include "dsi_ctrl.h"
 #include "dsi_phy.h"
 #include "dsi_panel.h"
+#include "dsi_display_mi.h"
 
 #define MAX_DSI_CTRLS_PER_DISPLAY             2
 #define DSI_CLIENT_NAME_SIZE		20
@@ -304,6 +305,8 @@ struct dsi_display {
 	struct dsi_panel_cmd_set cmd_set;
 
 	bool enabled;
+
+	struct dsi_display_mi mi;
 };
 
 int dsi_display_dev_probe(struct platform_device *pdev);

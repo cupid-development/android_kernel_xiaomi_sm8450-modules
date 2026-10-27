@@ -4334,6 +4334,8 @@ static int dsi_display_res_init(struct dsi_display *display)
 		display->hw_ownership = true;
 	}
 
+	dsi_display_mi_init(display);
+
 	return 0;
 error_panel_put:
 	dsi_panel_put(display->panel);
@@ -4359,8 +4361,10 @@ static int dsi_display_res_deinit(struct dsi_display *display)
 		dsi_ctrl_put(ctrl->ctrl);
 	}
 
-	if (display->panel)
+	if (display->panel) {
+		dsi_display_mi_deinit(display);
 		dsi_panel_put(display->panel);
+	}
 
 	return rc;
 }
@@ -8726,6 +8730,8 @@ int dsi_display_post_enable(struct dsi_display *display)
 				display->name, rc);
 	}
 
+	dsi_display_mi_set_allowed(display, true);
+
 	/* remove the clk vote for CMD mode panels */
 	if (display->config.panel_mode == DSI_OP_CMD_MODE)
 		dsi_display_clk_ctrl(display->dsi_clk_handle,
@@ -8743,6 +8749,8 @@ int dsi_display_pre_disable(struct dsi_display *display)
 		DSI_ERR("Invalid params\n");
 		return -EINVAL;
 	}
+
+	dsi_display_mi_set_allowed(display, false);
 
 	mutex_lock(&display->display_lock);
 
