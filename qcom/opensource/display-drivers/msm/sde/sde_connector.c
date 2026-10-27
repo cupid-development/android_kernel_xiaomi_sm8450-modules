@@ -760,7 +760,7 @@ static int _sde_connector_update_power_locked(struct sde_connector *c_conn)
 	c_conn->last_panel_power_mode = mode;
 
 	mutex_unlock(&c_conn->lock);
-	if (mode != SDE_MODE_DPMS_ON)
+	if (mode > c_conn->max_esd_check_power_mode)
 		sde_connector_schedule_status_work(connector, false);
 	else
 		sde_connector_schedule_status_work(connector, true);
@@ -3358,6 +3358,7 @@ struct drm_connector *sde_connector_init(struct drm_device *dev,
 	c_conn->dpms_mode = DRM_MODE_DPMS_ON;
 	c_conn->lp_mode = 0;
 	c_conn->last_panel_power_mode = SDE_MODE_DPMS_ON;
+	c_conn->max_esd_check_power_mode = SDE_MODE_DPMS_ON;
 
 	sde_kms = to_sde_kms(priv->kms);
 	if (sde_kms->vbif[VBIF_NRT]) {
@@ -3446,6 +3447,11 @@ struct drm_connector *sde_connector_init(struct drm_device *dev,
 		if (rc)
 			SDE_ERROR("register panel id event err %d\n", rc);
 	}
+
+	if (connector_type == DRM_MODE_CONNECTOR_DSI && display &&
+	    ((struct dsi_display *)display)->panel &&
+	    ((struct dsi_display *)display)->panel->esd_config.esd_aod_enabled)
+		c_conn->max_esd_check_power_mode = SDE_MODE_DPMS_LP2;
 
 	rc = msm_property_install_get_status(&c_conn->property_info);
 	if (rc) {

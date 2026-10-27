@@ -494,6 +494,7 @@ struct sde_connector_dyn_hdr_metadata {
  * @dpms_mode: DPMS property setting from user space
  * @lp_mode: LP property setting from user space
  * @last_panel_power_mode: Last consolidated dpms/lp mode setting
+ * @max_esd_check_power_mode: Highest power mode the ESD status is checked in
  * @property_info: Private structure for generic property handling
  * @property_data: Array of private data for generic property handling
  * @blob_caps: Pointer to blob structure for 'capabilities' property
@@ -560,6 +561,7 @@ struct sde_connector {
 	int dpms_mode;
 	int lp_mode;
 	int last_panel_power_mode;
+	int max_esd_check_power_mode;
 
 	struct msm_property_info property_info;
 	struct msm_property_data property_data[CONNECTOR_PROP_COUNT];
