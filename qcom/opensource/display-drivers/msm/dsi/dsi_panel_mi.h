@@ -68,6 +68,10 @@ enum dsi_panel_mi_doze {
  *                turned on or local HBM turned off.
  * @dimming_work: Enables DDIC dimming.
  * @bl_on:        Backlight was turned on since the panel was enabled.
+ * @vdc_param:    VDC calibration from the bootloader.
+ * @vdc_update:   <register index length> triples of the panel on commands
+ *                receiving @vdc_param in order.
+ * @vdc_update_count: Number of u32 in @vdc_update.
  */
 struct dsi_panel_mi {
 	bool hbm_reg53;
@@ -121,6 +125,10 @@ struct dsi_panel_mi {
 	u32 dimming_delay_ms;
 	struct delayed_work dimming_work;
 	bool bl_on;
+
+	u8 vdc_param[8];
+	u32 vdc_update[6];
+	int vdc_update_count;
 };
 
 void dsi_panel_mi_parse(struct dsi_panel *panel);
@@ -152,5 +160,7 @@ enum dsi_cmd_set_type dsi_panel_mi_timing_switch_type(struct dsi_panel *panel);
 void dsi_panel_mi_post_timing_switch(struct dsi_panel *panel);
 
 void dsi_panel_mi_read_batch(struct dsi_panel *panel);
+
+void dsi_panel_mi_update_on_cmds(struct dsi_panel *panel);
 
 #endif /* _DSI_PANEL_MI_H_ */

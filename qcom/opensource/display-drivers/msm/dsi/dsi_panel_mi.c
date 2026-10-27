@@ -16,6 +16,7 @@
 #include "dsi_panel_mi_alpha.h"
 
 #define SMEM_SW_DISPLAY_LHBM_TABLE 498
+#define SMEM_SW_DISPLAY_VDC_TABLE 501
 
 /*
  * The bootloader stores the calibrated local HBM gamma of Novatek panels in
@@ -169,6 +170,32 @@ static void dsi_panel_mi_queue_dimming(struct dsi_panel *panel)
 			msecs_to_jiffies(mi->dimming_delay_ms));
 }
 
+static void dsi_panel_mi_parse_vdc(struct dsi_panel *panel)
+{
+	struct dsi_parser_utils *utils = &panel->utils;
+	struct dsi_panel_mi *mi = &panel->mi;
+	size_t size;
+	u8 *table;
+	int count;
+
+	count = utils->count_u32_elems(utils->data, "mi,vdc-param-update");
+	if (count <= 0 || count % 3 || count > ARRAY_SIZE(mi->vdc_update))
+		return;
+
+	table = qcom_smem_get(QCOM_SMEM_HOST_ANY, SMEM_SW_DISPLAY_VDC_TABLE, &size);
+	if (IS_ERR_OR_NULL(table) || size < sizeof(mi->vdc_param)) {
+		DSI_INFO("[%s] no vdc calibration\n", panel->name);
+		return;
+	}
+
+	if (utils->read_u32_array(utils->data, "mi,vdc-param-update",
+			mi->vdc_update, count))
+		return;
+
+	memcpy(mi->vdc_param, table, sizeof(mi->vdc_param));
+	mi->vdc_update_count = count;
+}
+
 void dsi_panel_mi_parse(struct dsi_panel *panel)
 {
 	struct dsi_parser_utils *utils = &panel->utils;
@@ -207,6 +234,7 @@ void dsi_panel_mi_parse(struct dsi_panel *panel)
 
 	dsi_panel_mi_parse_lhbm(panel);
 	dsi_panel_mi_parse_esd(panel);
+	dsi_panel_mi_parse_vdc(panel);
 }
 
 void dsi_panel_mi_parse_cmd_update(struct dsi_panel_cmd_set *set,
@@ -717,4 +745,37 @@ void dsi_panel_mi_read_batch(struct dsi_panel *panel)
 void dsi_panel_mi_deinit(struct dsi_panel *panel)
 {
 	cancel_delayed_work_sync(&panel->mi.dimming_work);
+}
+
+/* Called before sending the panel on commands */
+void dsi_panel_mi_update_on_cmds(struct dsi_panel *panel)
+{
+	struct dsi_panel_mi *mi = &panel->mi;
+	struct dsi_panel_cmd_set *set;
+	u32 reg, index, len, offset = 0;
+	u8 *payload;
+	int i;
+
+	if (!mi->vdc_update_count || !panel->cur_mode ||
+	    !panel->cur_mode->priv_info)
+		return;
+
+	set = &panel->cur_mode->priv_info->cmd_sets[DSI_CMD_SET_ON];
+	for (i = 0; i < mi->vdc_update_count; i += 3) {
+		reg = mi->vdc_update[i];
+		index = mi->vdc_update[i + 1];
+		len = mi->vdc_update[i + 2];
+		if (index >= set->count || offset + len > sizeof(mi->vdc_param))
+			break;
+
+		payload = (u8 *)set->cmds[index].msg.tx_buf;
+		if (set->cmds[index].msg.tx_len < len + 1 || payload[0] != reg) {
+			DSI_ERR("[%s] invalid vdc update of 0x%02x\n",
+					panel->name, reg);
+			break;
+		}
+
+		memcpy(&payload[1], &mi->vdc_param[offset], len);
+		offset += len;
+	}
 }
