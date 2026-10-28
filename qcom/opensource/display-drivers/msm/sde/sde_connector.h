@@ -986,6 +986,13 @@ int sde_connector_register_custom_event(struct sde_kms *kms,
 		struct drm_connector *conn_drm, u32 event, bool en);
 
 /**
+ * sde_connector_resend_dimming_bl - send the dimming state of a DSI panel to
+ *	user space again, including the minimum backlight
+ * @connector: Pointer to drm connector object
+ */
+void sde_connector_resend_dimming_bl(struct drm_connector *connector);
+
+/**
  * sde_connector_update_complete_commit - trigger time feature programming
  * @connector: Pointer to drm connector object
  * @force_update_dsi_clocks: Bool to force update dsi clocks

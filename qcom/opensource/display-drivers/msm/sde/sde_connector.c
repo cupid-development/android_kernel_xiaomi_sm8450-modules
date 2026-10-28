@@ -126,6 +126,11 @@ static void sde_dimming_bl_notify(struct sde_connector *conn, struct dsi_backlig
 	bl_info.bl_scale_sv = config->bl_scale_sv;
 	bl_info.status = config->dimming_status;
 	bl_info.min_bl = config->dimming_min_bl;
+	/* The image must not be dimmed while the panel doesn't use the backlight */
+	if (dsi_panel_mi_doze_ignores_bl(container_of(config, struct dsi_panel, bl_config))) {
+		bl_info.status &= ~DIMMING_ENABLE;
+		bl_info.min_bl = 0;
+	}
 	bl_info.bl_scale_max = MAX_BL_SCALE_LEVEL;
 	bl_info.bl_scale_sv_max = SV_BL_SCALE_CAP;
 	event.type = DRM_EVENT_DIMMING_BL;
@@ -134,6 +139,17 @@ static void sde_dimming_bl_notify(struct sde_connector *conn, struct dsi_backlig
 		  "min_bl %d status 0x%x\n", bl_info.bl_level, bl_info.bl_scale,
 		  bl_info.bl_scale_sv, bl_info.min_bl, bl_info.status);
 	msm_mode_object_event_notify(&conn->base.base, conn->base.dev, &event, (u8 *)&bl_info);
+}
+
+void sde_connector_resend_dimming_bl(struct drm_connector *connector)
+{
+	struct sde_connector *c_conn = to_sde_connector(connector);
+	struct dsi_display *display = c_conn->display;
+	struct dsi_backlight_config *config = &display->panel->bl_config;
+
+	config->dimming_status |= DIMMING_MIN_BL_VALID;
+	sde_dimming_bl_notify(c_conn, config);
+	config->dimming_status &= ~DIMMING_MIN_BL_VALID;
 }
 
 static int sde_backlight_device_update_status(struct backlight_device *bd)

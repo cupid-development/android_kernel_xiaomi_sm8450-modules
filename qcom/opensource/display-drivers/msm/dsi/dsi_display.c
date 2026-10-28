@@ -250,7 +250,8 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 
 	/* use bl_temp as index of dimming bl lut to find the dimming panel backlight */
 	if (bl_temp != 0 && panel->bl_config.dimming_bl_lut &&
-	    bl_temp < panel->bl_config.dimming_bl_lut->length) {
+	    bl_temp < panel->bl_config.dimming_bl_lut->length &&
+	    !dsi_panel_mi_doze_ignores_bl(panel)) {
 		DSI_DEBUG("before dimming bl_temp = %u, after dimming bl_temp = %lu\n",
 			bl_temp, panel->bl_config.dimming_bl_lut->mapped_bl[bl_temp]);
 		bl_temp = panel->bl_config.dimming_bl_lut->mapped_bl[bl_temp];
@@ -1401,6 +1402,7 @@ int dsi_display_set_power(struct drm_connector *connector,
 	if (!rc) {
 		display->panel->power_mode = power_mode;
 		dsi_display_mi_notify(display, DSI_DISPLAY_MI_POWER, power_mode);
+		dsi_display_mi_update_dimming(display);
 	}
 
 	return rc;
@@ -8757,6 +8759,7 @@ int dsi_display_post_enable(struct dsi_display *display)
 	dsi_panel_mi_esd_irq_ctrl(display->panel, true);
 	dsi_panel_release_panel_lock(display->panel);
 	dsi_display_mi_set_allowed(display, true);
+	dsi_display_mi_update_dimming(display);
 
 	/* remove the clk vote for CMD mode panels */
 	if (display->config.panel_mode == DSI_OP_CMD_MODE)

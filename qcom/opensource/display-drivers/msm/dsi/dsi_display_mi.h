@@ -28,6 +28,8 @@ enum dsi_display_mi_state {
  * @allowed:      Panel is on and may receive local HBM commands.
  * @fod_ui:       Local HBM is visible on the panel.
  * @state:        Values of the pollable state nodes.
+ * @dimming_off:  Dimming was reported as inactive because the panel doesn't
+ *                use the backlight in doze.
  */
 struct dsi_display_mi {
 	struct kthread_worker *worker;
@@ -38,6 +40,8 @@ struct dsi_display_mi {
 	bool allowed;
 	bool fod_ui;
 	u32 state[DSI_DISPLAY_MI_STATE_MAX];
+
+	bool dimming_off;
 };
 
 void dsi_display_mi_init(struct dsi_display *display);
@@ -48,5 +52,7 @@ void dsi_display_mi_set_allowed(struct dsi_display *display, bool allowed);
 
 void dsi_display_mi_notify(struct dsi_display *display,
 		enum dsi_display_mi_state state, u32 value);
+
+void dsi_display_mi_update_dimming(struct dsi_display *display);
 
 #endif /* _DSI_DISPLAY_MI_H_ */

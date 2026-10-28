@@ -157,6 +157,8 @@ void dsi_panel_mi_reset_state(struct dsi_panel *panel);
 
 bool dsi_panel_mi_has_doze(struct dsi_panel *panel);
 
+bool dsi_panel_mi_doze_ignores_bl(struct dsi_panel *panel);
+
 int dsi_panel_mi_set_doze(struct dsi_panel *panel, bool doze);
 
 int dsi_panel_mi_set_lhbm(struct dsi_panel *panel, u32 nits);

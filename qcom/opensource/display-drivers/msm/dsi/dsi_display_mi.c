@@ -9,6 +9,7 @@
 
 #include "dsi_display.h"
 #include "dsi_display_mi.h"
+#include "sde_connector.h"
 
 static void dsi_display_mi_set_fod_ui(struct dsi_display *display, bool fod_ui)
 {
@@ -105,6 +106,18 @@ void dsi_display_mi_notify(struct dsi_display *display,
 	if (changed)
 		sysfs_notify(&display->pdev->dev.kobj, NULL,
 				dsi_display_mi_state_names[state]);
+}
+
+/* Called after power mode changes, which may stop or start using the backlight */
+void dsi_display_mi_update_dimming(struct dsi_display *display)
+{
+	bool off = dsi_panel_mi_doze_ignores_bl(display->panel);
+
+	if (!display->drm_conn || off == display->mi.dimming_off)
+		return;
+
+	display->mi.dimming_off = off;
+	sde_connector_resend_dimming_bl(display->drm_conn);
 }
 
 static ssize_t dsi_display_mi_state_show(struct device *dev, char *buf,

@@ -345,7 +345,7 @@ bool dsi_panel_mi_set_backlight(struct dsi_panel *panel, u32 *bl_lvl)
 		return true;
 
 	/* Doze brightness is part of the doze commands */
-	if (mi->doze && dsi_panel_mi_has_doze(panel)) {
+	if (dsi_panel_mi_doze_ignores_bl(panel)) {
 		if (*bl_lvl)
 			dsi_panel_mi_set_doze(panel, true);
 		return true;
@@ -427,6 +427,11 @@ bool dsi_panel_mi_has_doze(struct dsi_panel *panel)
 		return false;
 
 	return panel->cur_mode->priv_info->cmd_sets[DSI_CMD_SET_MI_DOZE_LBM].count;
+}
+
+bool dsi_panel_mi_doze_ignores_bl(struct dsi_panel *panel)
+{
+	return panel->mi.doze && dsi_panel_mi_has_doze(panel);
 }
 
 static int dsi_panel_mi_set_dbv_lp(struct dsi_panel *panel, u32 dbv)
